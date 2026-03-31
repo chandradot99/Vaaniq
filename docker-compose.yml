@@ -1,6 +1,17 @@
 version: "3.9"
 
+# ── Local development ─────────────────────────────────────────────────────────
+# Run infra only:   docker-compose up postgres redis -d
+# Run full stack:   docker-compose up
+#
+# For local dev, run the server directly:
+#   uv run uvicorn vaaniq.server.main:app --reload
+#   uv run celery -A vaaniq.server.workers.celery_app worker  (Sprint 3+)
+
 services:
+
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+
   postgres:
     image: pgvector/pgvector:pg16
     environment:
@@ -8,7 +19,7 @@ services:
       POSTGRES_PASSWORD: vaaniq
       POSTGRES_DB: vaaniq
     ports:
-      - "5432:5432"
+      - "5432:5432"     # exposed to localhost for local dev
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -20,12 +31,15 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "6379:6379"     # exposed to localhost for local dev
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # ── Application (full Docker stack only) ────────────────────────────────────
+  # Not needed for local dev — use uv run uvicorn instead
 
   api:
     build:
@@ -34,6 +48,10 @@ services:
     ports:
       - "8000:8000"
     env_file: packages/vaaniq-server/.env
+    environment:
+      # Override localhost URLs with Docker service names
+      DATABASE_URL: postgresql+asyncpg://vaaniq:vaaniq@postgres:5432/vaaniq
+      REDIS_URL: redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
@@ -45,17 +63,24 @@ services:
         uv run uvicorn vaaniq.server.main:app --host 0.0.0.0 --port 8000
       "
 
+  # ── Worker (Sprint 3+ only — needed for document embedding & campaigns) ─────
+
   worker:
     build:
       context: .
       dockerfile: packages/vaaniq-server/Dockerfile
     env_file: packages/vaaniq-server/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://vaaniq:vaaniq@postgres:5432/vaaniq
+      REDIS_URL: redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     command: uv run celery -A vaaniq.server.workers.celery_app worker --loglevel=info
+    profiles:
+      - worker   # only starts when explicitly requested: docker-compose --profile worker up
 
 volumes:
   postgres_data:
