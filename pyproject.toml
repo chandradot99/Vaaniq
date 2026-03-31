@@ -1,0 +1,30 @@
+[tool.uv.workspace]
+members = [
+    "packages/vaaniq-core",
+    "packages/vaaniq-graph",
+    "packages/vaaniq-voice",
+    "packages/vaaniq-rag",
+    "packages/vaaniq-tools",
+    "packages/vaaniq-channels",
+    "packages/vaaniq-server",
+]
+
+[tool.uv.sources]
+vaaniq-core     = { workspace = true }
+vaaniq-graph    = { workspace = true }
+vaaniq-voice    = { workspace = true }
+vaaniq-rag      = { workspace = true }
+vaaniq-tools    = { workspace = true }
+vaaniq-channels = { workspace = true }
+vaaniq-server   = { workspace = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
