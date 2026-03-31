@@ -11,11 +11,6 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production"
     fernet_key: str = ""
     allowed_origins: str = "http://localhost:3000"
-    storage_backend: str = "minio"
-    minio_endpoint: str = "localhost:9000"
-    minio_access_key: str = "minioadmin"
-    minio_secret_key: str = "minioadmin"
-    minio_bucket: str = "vaaniq"
     sentry_dsn: Optional[str] = None
     otel_exporter_otlp_endpoint: Optional[str] = None
     environment: str = "development"

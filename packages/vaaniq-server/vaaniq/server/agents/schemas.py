@@ -1,8 +1,8 @@
 from typing import Any, Optional
-from pydantic import BaseModel
+from vaaniq.server.core.schemas import CustomModel
 
 
-class AgentCreate(BaseModel):
+class AgentCreate(CustomModel):
     name: str
     system_prompt: str = ""
     voice_id: Optional[str] = None
@@ -10,7 +10,7 @@ class AgentCreate(BaseModel):
     simple_mode: bool = False
 
 
-class AgentUpdate(BaseModel):
+class AgentUpdate(CustomModel):
     name: Optional[str] = None
     system_prompt: Optional[str] = None
     voice_id: Optional[str] = None
@@ -18,7 +18,7 @@ class AgentUpdate(BaseModel):
     simple_mode: Optional[bool] = None
 
 
-class AgentResponse(BaseModel):
+class AgentResponse(CustomModel):
     id: str
     org_id: str
     name: str

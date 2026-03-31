@@ -7,7 +7,9 @@ from vaaniq.server.core.config import settings
 from vaaniq.server.core.database import Base
 
 # Import all models so Alembic can detect them
-from vaaniq.server.models import user, organization, agent, session, api_key  # noqa: F401
+from vaaniq.server.auth import models as auth_models  # noqa: F401
+from vaaniq.server.agents import models as agents_models  # noqa: F401
+from vaaniq.server.models import session, api_key  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
