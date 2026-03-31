@@ -111,32 +111,6 @@ docker-compose up
 
 ---
 
-## API
-
-All routes are versioned under `/v1/`. Webhook routes are unversioned (Twilio controls those URLs).
-
-```
-POST  /v1/auth/register
-POST  /v1/auth/login
-POST  /v1/auth/refresh
-GET   /v1/auth/me
-
-GET   /v1/agents
-POST  /v1/agents
-GET   /v1/agents/:id
-PUT   /v1/agents/:id
-DELETE /v1/agents/:id
-
-POST  /webhooks/twilio/inbound
-POST  /webhooks/twilio/status
-
-GET   /health
-GET   /ready
-GET   /metrics
-```
-
----
-
 ## Development
 
 ### Run tests

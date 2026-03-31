@@ -5,6 +5,7 @@
 **GitHub:** `github.com/chandradot99/vaaniq`
 **Linear:** `linear.app/chandradot99/project/vaaniq-43b1169cf4e7`
 **PyPI namespace:** `vaaniq-*`
+**FastAPI best practices:** `github.com/zhanymkanov/fastapi-best-practices`
 
 ---
 
@@ -243,56 +244,57 @@ vaaniq/                              ← GitHub repo root
 │       └── vaaniq/server/
 │           ├── __init__.py
 │           ├── main.py             ← FastAPI app init + router registration
-│           ├── routers/
-│           │   └── v1/             ← ALL routes versioned under /v1/
-│           │       ├── auth.py         ← /v1/auth/*
-│           │       ├── agents.py       ← /v1/agents/*
-│           │       ├── graph.py        ← /v1/agents/:id/graph
-│           │       ├── sessions.py     ← /v1/sessions/*
-│           │       ├── campaigns.py    ← /v1/campaigns/*
-│           │       ├── chat.py         ← /v1/chat/* (SSE)
-│           │       ├── webhooks.py     ← /webhooks/twilio, /webhooks/whatsapp (no version — Twilio controls this URL)
-│           │       ├── knowledge.py    ← /v1/knowledge/*
-│           │       ├── tools.py        ← /v1/tools/*
-│           │       ├── settings.py     ← /v1/settings/*
-│           │       └── debug.py        ← /v1/debug/* (WebSocket live graph)
-│           ├── models/             ← SQLAlchemy ORM models
-│           │   ├── user.py
-│           │   ├── organization.py
-│           │   ├── agent.py        ← includes graph_config JSONB field
-│           │   ├── session.py      ← unified voice + chat + WhatsApp
+│           ├── exceptions.py       ← global base exceptions (VaaniqException, NotFound, Unauthorized)
+│           │
+│           ├── auth/               ← auth domain
+│           │   ├── config.py       ← AuthConfig — JWT settings decoupled from global settings
+│           │   ├── constants.py
+│           │   ├── dependencies.py ← get_current_user dependency (reusable across all routes)
+│           │   ├── exceptions.py   ← EmailAlreadyExists, InvalidCredentials, InvalidToken
+│           │   ├── models.py       ← User, Organization, OrgMember SQLAlchemy models
+│           │   ├── repository.py
+│           │   ├── router.py       ← /v1/auth/*
+│           │   ├── schemas.py      ← RegisterRequest (password validation), LoginRequest, etc.
+│           │   └── service.py
+│           │
+│           ├── agents/             ← agents domain
+│           │   ├── constants.py
+│           │   ├── dependencies.py ← valid_agent_id dependency (validates + fetches, cached per request)
+│           │   ├── exceptions.py   ← AgentNotFound
+│           │   ├── models.py       ← Agent SQLAlchemy model (includes graph_config JSONB)
+│           │   ├── repository.py
+│           │   ├── router.py       ← /v1/agents/*
+│           │   ├── schemas.py
+│           │   └── service.py
+│           │
+│           ├── webhooks/           ← webhooks domain (unversioned — Twilio controls these URLs)
+│           │   ├── constants.py    ← ELEVENLABS_STREAM_URL
+│           │   ├── exceptions.py
+│           │   ├── repository.py
+│           │   ├── router.py       ← /webhooks/twilio/*
+│           │   └── service.py
+│           │
+│           ├── models/             ← shared models only (cross-domain, not owned by one feature)
 │           │   ├── api_key.py      ← encrypted BYOK keys
-│           │   ├── phone_number.py
-│           │   ├── data_source.py
-│           │   ├── tool_config.py
-│           │   ├── campaign.py
-│           │   ├── audit_log.py    ← who changed what, when
-│           │   ├── webhook_delivery.py ← retry tracking
-│           │   └── invitation.py   ← org member invites
-│           ├── schemas/            ← Pydantic request/response schemas
-│           │   ├── auth.py
-│           │   ├── agent.py
-│           │   ├── session.py
-│           │   └── graph.py
+│           │   └── session.py      ← unified voice + chat + WhatsApp sessions
+│           │
 │           ├── core/
-│           │   ├── config.py       ← pydantic-settings (reads .env)
-│           │   ├── database.py     ← SQLAlchemy async engine + session (supports read replica)
-│           │   ├── security.py     ← JWT helpers (python-jose)
+│           │   ├── config.py       ← global pydantic-settings (reads .env)
+│           │   ├── database.py     ← SQLAlchemy async engine + session + naming conventions
 │           │   ├── encryption.py   ← Fernet BYOK key encrypt/decrypt
-│           │   ├── rate_limit.py   ← slowapi rate limiter config
-│           │   └── observability.py ← Sentry init, OpenTelemetry setup
+│           │   ├── observability.py← Sentry init, OpenTelemetry setup
+│           │   ├── schemas.py      ← CustomModel base (UTC datetime, populate_by_name)
+│           │   └── security.py     ← JWT helpers (python-jose)
+│           │
 │           ├── middleware/
-│           │   ├── audit.py        ← log all write operations to audit_logs
 │           │   └── cors.py         ← explicit CORS allowlist (never *)
-│           ├── workers/            ← Celery background tasks
-│           │   ├── celery_app.py
-│           │   ├── embedding.py    ← process uploaded docs
-│           │   ├── sync.py         ← auto-sync data sources
-│           │   ├── campaigns.py    ← outbound calling
-│           │   ├── analytics.py    ← aggregate stats hourly
-│           │   └── webhooks.py     ← webhook delivery with retry + DLQ
+│           │
+│           ├── workers/            ← Celery background tasks (added when needed)
+│           │   └── celery_app.py
+│           │
 │           └── migrations/         ← Alembic
 │               └── versions/
+│                   └── 20260331_0001_initial_schema.py
 ```
 
 ---
@@ -638,57 +640,12 @@ usage_records   (id, org_id, month DATE, channel, session_count INT,
 
 ---
 
-## API Structure (vaaniq-server)
+## API Routing Convention
 
-All routes versioned under `/v1/`. Webhook routes are unversioned — Twilio/WhatsApp control these URLs.
-
-```
-POST   /v1/auth/register
-POST   /v1/auth/login
-POST   /v1/auth/refresh
-GET    /v1/auth/me
-
-GET    /v1/agents
-POST   /v1/agents
-GET    /v1/agents/:id
-PUT    /v1/agents/:id
-DELETE /v1/agents/:id
-GET    /v1/agents/:id/graph          ← load graph JSON
-PUT    /v1/agents/:id/graph          ← save graph JSON
-
-GET    /v1/sessions                  ← unified voice + chat log
-GET    /v1/sessions/:id
-
-POST   /v1/chat/:agent_id/session
-POST   /v1/chat/:agent_id/message    ← SSE streaming response
-WS     /v1/chat/:agent_id/ws/:sid
-
-POST   /webhooks/twilio/inbound      ← no version prefix — Twilio-controlled URL
-POST   /webhooks/twilio/status
-POST   /webhooks/whatsapp
-
-WS     /v1/debug/:session_id         ← live graph state stream
-
-GET    /v1/settings/api-keys
-POST   /v1/settings/api-keys
-DELETE /v1/settings/api-keys/:id
-POST   /v1/settings/api-keys/:id/test
-
-GET    /v1/knowledge/:agent_id
-POST   /v1/knowledge/:agent_id/upload
-POST   /v1/knowledge/:agent_id/url
-POST   /v1/knowledge/:agent_id/sheets
-DELETE /v1/knowledge/:agent_id/:id
-
-GET    /v1/campaigns
-POST   /v1/campaigns
-PUT    /v1/campaigns/:id/start
-PUT    /v1/campaigns/:id/pause
-
-GET    /health                       ← liveness probe (always 200 if process is up)
-GET    /ready                        ← readiness probe (checks DB + Redis connectivity)
-GET    /metrics                      ← Prometheus metrics
-```
+- All routes versioned under `/v1/` — e.g. `/v1/agents`, `/v1/sessions`
+- Webhook routes are unversioned — Twilio/WhatsApp control these URLs (`/webhooks/twilio/*`)
+- Probe routes are unversioned — `/health`, `/ready`, `/metrics`
+- Actual route definitions live in each domain's `router.py`
 
 ---
 
@@ -835,49 +792,18 @@ docker-compose up
 
 ---
 
-## Current Sprint — Sprint 1: Foundation & First Call
+## Project Tracking
 
-**Goal:** One inbound Twilio call → ElevenLabs agent → session logged in DB
+Sprints, tickets, and priorities are managed in Linear — not in this file.
 
-| ID | Title | Priority | Order |
-|---|---|---|---|
-| CHA-5 | Monorepo scaffold — uv workspace + all package skeletons (backend only) | 🔴 Urgent | 1st |
-| CHA-6 | PostgreSQL schema + Alembic migrations | 🔴 Urgent | 2nd |
-| CHA-7 | Auth system — JWT login, register, protected routes | 🔴 Urgent | 3rd |
-| CHA-8 | Twilio inbound → ElevenLabs agent → session logged | 🔴 Urgent | 4th |
-| CHA-60 | API versioning + health/ready/metrics endpoints | 🔴 Urgent | 5th |
-| CHA-61 | Observability — Sentry, OpenTelemetry, structured logging | 🟠 High | 6th |
-| CHA-62 | CI/CD — GitHub Actions workflows | 🟠 High | 7th |
-| CHA-10 | Deploy — Railway (backend + DB) | 🟠 High | 8th |
-
-**Note:** Sprint 1 uses ElevenLabs hosted agent for the quickest path to a working call. We replace it with our own Pipecat + LangGraph pipeline in Sprint 4. LiveKit is added in Sprint 5 for browser WebRTC voice. This is intentional — validate first, build the custom pipeline after.
-
----
-
-## Sprint Roadmap
-
-| Sprint | Focus | Target |
-|---|---|---|
-| 1 | Foundation + First Call | Apr 2 |
-| 2 | Agent Builder Dashboard | Apr 16 |
-| 3 | Knowledge Base + RAG (vaaniq-rag) | Apr 30 |
-| 4 | Visual LangGraph Editor (vaaniq-graph) | May 14 |
-| 4b | Pre-Built Tool Library (vaaniq-tools) | May 21 |
-| 5 | Outbound + Chat + WhatsApp + Indian Languages | May 28 |
-| 6 | Analytics Dashboard | Jun 11 |
-| 7 | Billing + Open Source Release + PyPI publish | Jun 25 |
-| 8 | Extended Connectors (vaaniq-rag additions) | Jul 9 |
-| 8b | BYOC Infrastructure + Vector DB Alternatives | Jul 16 |
-| 9 | Enterprise + White Label + SSO | Jul 23 |
-| 10 | Industry Templates + Marketplace | Aug 6 |
-
-Full tickets: https://linear.app/chandradot99/project/vaaniq-43b1169cf4e7
+- **Linear:** https://linear.app/chandradot99/project/vaaniq-43b1169cf4e7
 
 ---
 
 ## Key Architectural Decisions (Don't Revisit These)
 
 1. **Multiple composable packages** — not one monolith; enables independent versioning, testing, and community adoption
+2. **Domain-based server structure** — each feature area (`auth/`, `agents/`, `webhooks/`) owns its own `router.py`, `service.py`, `repository.py`, `models.py`, `schemas.py`, `dependencies.py`, `exceptions.py`. Only truly shared models go in `models/`. No flat `routers/v1/` folder.
 3. **uv workspaces** — modern Python monorepo management; faster than pip/poetry
 4. **vaaniq-core has zero vaaniq dependencies** — it's the contract; if it imports from graph or server, you've made a mistake
 5. **All API routes under /v1/** — versioned from day one; webhooks (Twilio/WA) are the only exception
@@ -934,6 +860,8 @@ Always keep the Indian market in mind — it's a key differentiator:
 - Python: PEP 8, type hints everywhere, async/await throughout
 - No `print()` — use `structlog` for structured logging; every log line includes `org_id` and `session_id`
 - All FastAPI endpoints return Pydantic schemas, never raw dicts
+- All schemas inherit from `CustomModel` (in `core/schemas.py`), not `BaseModel` directly
+- Use `@field_validator` for input validation (e.g., password strength) — not ad-hoc checks in service layer
 - All DB queries: `async with get_db() as db`
 - Tests in `tests/` inside each package — test in isolation before integration
 - Use `pytest-asyncio` for async tests
@@ -948,7 +876,7 @@ New node type          → packages/vaaniq-graph/vaaniq/graph/nodes/
 New RAG data source    → packages/vaaniq-rag/vaaniq/rag/sources/
 New vector DB          → packages/vaaniq-rag/vaaniq/rag/vector_db/
 New pre-built tool     → packages/vaaniq-tools/vaaniq/tools/
-New API endpoint       → packages/vaaniq-server/vaaniq/server/routers/v1/
+New API endpoint       → packages/vaaniq-server/vaaniq/server/<domain>/router.py
 New channel            → packages/vaaniq-channels/vaaniq/channels/
 New STT/TTS provider   → packages/vaaniq-voice/vaaniq/voice/providers/
 PSTN voice change      → packages/vaaniq-voice/vaaniq/voice/pipecat.py
@@ -967,9 +895,25 @@ WebRTC voice change    → packages/vaaniq-voice/vaaniq/voice/livekit.py
 
 **7.** New tool? → register in `TOOL_REGISTRY` in `vaaniq/tools/registry.py`
 
-**8.** New API endpoint? → place under `routers/v1/`, return Pydantic schema, add rate limit if public-facing
+**8.** New API endpoint? → create a domain folder (`<domain>/router.py`, `service.py`, `repository.py`, `models.py`, `schemas.py`, `dependencies.py`, `exceptions.py`); inherit schemas from `CustomModel`; add rate limit if public-facing
 
 ---
 
-*Vaaniq — Last updated: March 31, 2026*
-*Update this file whenever major architectural decisions are made.*
+*Vaaniq — Last updated: April 1, 2026*
+
+## Keeping This File Current
+
+**Claude must update `CLAUDE.md` automatically** (without being asked) whenever:
+- A new architectural decision is made or an existing one changes
+- The server domain structure gains a new domain folder
+- A new package is added or the dependency tree changes
+- A pattern is established that future sessions need to follow
+
+Sprints and tickets live in Linear — never add them here.
+
+**Claude must update `README.md` automatically** (without being asked) whenever:
+- The quick start steps change
+- New providers are supported
+- The tech stack changes
+
+Do not update either file for routine code changes (new endpoints within existing domains, bug fixes, new schemas following existing patterns).
