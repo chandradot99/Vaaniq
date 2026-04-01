@@ -1,8 +1,6 @@
-version: "3.9"
-
 # ── Local development ─────────────────────────────────────────────────────────
-# Run infra only:   docker-compose up postgres redis -d
-# Run full stack:   docker-compose up
+# Run infra only:   docker compose up postgres redis -d
+# Run full stack:   docker compose up
 #
 # For local dev, run the server directly:
 #   uv run uvicorn vaaniq.server.main:app --reload
@@ -80,7 +78,7 @@ services:
         condition: service_healthy
     command: uv run celery -A vaaniq.server.workers.celery_app worker --loglevel=info
     profiles:
-      - worker   # only starts when explicitly requested: docker-compose --profile worker up
+      - worker   # only starts when explicitly requested: docker compose --profile worker up
 
 volumes:
   postgres_data:
