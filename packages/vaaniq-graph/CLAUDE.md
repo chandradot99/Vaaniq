@@ -38,6 +38,7 @@ The JSON is the single source of truth. React Flow renders it. Python executes i
 ```json
 {
   "entry_point": "greet",
+  "guards": [],
   "nodes": [
     {
       "id": "greet",
@@ -68,8 +69,8 @@ The JSON is the single source of truth. React Flow renders it. Python executes i
       "position": { "x": 500, "y": 50 },
       "config": {
         "fields": [
-          { "name": "name", "type": "string", "prompt": "May I have your name?",         "required": true },
-          { "name": "date", "type": "date",   "prompt": "What date works for you?",      "required": true }
+          { "name": "name", "type": "string", "prompt": "May I have your name?",    "required": true },
+          { "name": "date", "type": "date",   "prompt": "What date works for you?", "required": true }
         ]
       }
     },
@@ -83,6 +84,19 @@ The JSON is the single source of truth. React Flow renders it. Python executes i
           "title": "Meeting with {{collected.name}}",
           "date":  "{{collected.date}}"
         }
+      }
+    },
+    {
+      "id": "notify",
+      "type": "http_request",
+      "position": { "x": 700, "y": 200 },
+      "config": {
+        "method": "POST",
+        "url": "https://hooks.your-app.com/booking-confirmed",
+        "headers": { "Authorization": "Bearer {{org_keys.webhook_secret}}" },
+        "body": { "name": "{{collected.name}}", "date": "{{collected.date}}" },
+        "save_response_to": "webhook_result",
+        "timeout_seconds": 10
       }
     },
     {
@@ -108,31 +122,94 @@ The JSON is the single source of truth. React Flow renders it. Python executes i
 **Rules:**
 - `position` is ignored at runtime — React Flow only
 - Edges with `condition` key are conditional; edges without are direct
-- All conditional edges from the same source node must share a matching condition node as source
+- All conditional edges from the same source node must have a `condition` node as their source
 - `entry_point` must match the `id` of a node in `nodes`
+- `guards` is a top-level array (not inside `nodes`) — see Guard Nodes section
 
 ---
 
 ## Node Types
 
-These are the building blocks exposed in the visual UI. Every `type` string maps to a class in `NODE_REGISTRY`.
+Full palette exposed in the visual UI. Every `type` string maps to a class in `NODE_REGISTRY`.
 
+### Input
 | Type | What it does | Key config fields |
 |---|---|---|
-| `llm_response` | Agent speaks using an LLM; optionally calls tools | `instructions`, `tools[]`, `rag_enabled`, `voice_id` |
+| `start` | Entry point — triggered when session begins | _(none)_ |
+| `inbound_message` | Triggered on each user turn (chat/WhatsApp) | _(none)_ |
+
+### Logic
+| Type | What it does | Key config fields |
+|---|---|---|
+| `llm_response` | Agent speaks using LLM; optionally calls tools | `instructions`, `tools[]`, `rag_enabled`, `voice_id` |
 | `condition` | LLM-based routing — sets `state["route"]` | `router_prompt`, `routes[{label, description}]` |
-| `collect_data` | Gather structured fields from user | `fields[{name, type, prompt, required}]` |
-| `run_tool` | Call a specific tool directly (no LLM decision) | `tool`, `input{field: "{{var}}"}` |
-| `rag_search` | Search knowledge base, write to `state["rag_context"]` | `top_k`, `min_score` |
+| `collect_data` | Gather structured fields from user over multiple turns | `fields[{name, type, prompt, required}]` |
+| `set_variable` | Set a state field directly without LLM | `key` (dot-path into state), `value` (literal or `{{template}}`) |
+
+### Action
+| Type | What it does | Key config fields |
+|---|---|---|
+| `run_tool` | Call a pre-built tool directly (no LLM decision) | `tool`, `input{field: "{{var}}"}` |
+| `http_request` | Call any external REST API or webhook | `method`, `url`, `headers`, `body`, `save_response_to`, `timeout_seconds` |
+| `send_message` | Proactively push a message mid-flow (WhatsApp/SMS) | `channel`, `to`, `template`, `body` |
 | `transfer_human` | Hand off to a real agent | `transfer_number`, `whisper_template` |
 | `end_session` | End gracefully | `farewell_message` |
-| `post_session_action` | Side effects after session ends (Celery task) | `actions[]` |
-| `guard` | Global override checked every turn | `condition_prompt`, `action`, `target_node` |
+| `post_session_action` | Side effects after session ends — runs as Celery task | `actions[]` |
 
-**Adding a new node type:**
-1. Create `vaaniq/graph/nodes/<type>.py` with a class extending `BaseNode`
-2. Register it in `NODE_REGISTRY` in `vaaniq/graph/nodes/__init__.py`
-3. Add the React Flow node component in the frontend
+### Data
+| Type | What it does | Key config fields |
+|---|---|---|
+| `rag_search` | Search knowledge base, write to `state["rag_context"]` | `top_k`, `min_score` |
+
+### Flow
+| Type | What it does | Key config fields |
+|---|---|---|
+| `parallel` | Run multiple branches simultaneously, wait for all | `branches[{id, entry_node}]` |
+| `subgraph` | Embed another agent's graph — reusable flows | `agent_id` |
+| `delay` | Pause execution for N seconds or until an external event | `seconds` or `event_key` |
+
+### Safety
+| Type | What it does | Key config fields |
+|---|---|---|
+| `guard` | Global override checked every turn (lives in `guards[]`, not `nodes[]`) | `condition_prompt`, `action`, `target_node` |
+
+---
+
+## Custom Tools — Three-Tier Model
+
+Not everything a user needs is in the pre-built tool library. We handle this in three tiers:
+
+### Tier 1 — Pre-built tools (~70% of use cases)
+Registered in `TOOL_REGISTRY` in `vaaniq-tools`. Google Calendar, Gmail, HubSpot, Razorpay, Freshdesk, etc. User picks from a list in the `llm_response` or `run_tool` node config. Their API key (BYOK) is injected automatically.
+
+### Tier 2 — HTTP Request node (~25% of use cases)
+A generic `http_request` node that makes any REST API call. User configures URL, method, headers, body — all support `{{template}}` syntax. Response is saved to a named state key.
+
+**This is the recommended escape hatch for:**
+- Proprietary or internal APIs
+- Webhooks to n8n / Zapier / Make for complex logic
+- Any API we haven't built a pre-built tool for yet
+
+No security concerns — we make one HTTP call to a URL the user provides. The user owns the endpoint and can write any logic there in any language.
+
+```json
+{
+  "type": "http_request",
+  "config": {
+    "method": "POST",
+    "url": "https://api.internal.com/check-stock",
+    "headers": { "X-API-Key": "{{org_keys.internal_key}}" },
+    "body": { "sku": "{{collected.product_sku}}" },
+    "save_response_to": "stock_result",
+    "timeout_seconds": 10
+  }
+}
+```
+
+### Tier 3 — Code node (v2, not yet implemented)
+Inline Python via Monaco editor in the UI. Runs in a `RestrictedPython` sandbox for pure transformation logic (no arbitrary imports, no I/O). Covers data parsing, calculations, string manipulation that don't warrant a full HTTP endpoint.
+
+**Do not implement in v1.** HTTP Request node covers everything for now.
 
 ---
 
@@ -161,7 +238,31 @@ class LLMResponseNode(BaseNode):
         return {**state, "messages": updated_messages}
 ```
 
+```python
+# vaaniq/graph/nodes/http_request.py
+class HttpRequestNode(BaseNode):
+    async def __call__(self, state: SessionState) -> SessionState:
+        resolved = TemplateResolver.resolve(self.config, state, self.org_keys)
+        async with httpx.AsyncClient(timeout=resolved["timeout_seconds"]) as client:
+            resp = await client.request(
+                method=resolved["method"],
+                url=resolved["url"],
+                headers=resolved.get("headers", {}),
+                json=resolved.get("body"),
+            )
+            resp.raise_for_status()
+        save_key = self.config.get("save_response_to")
+        if save_key:
+            return {**state, save_key: resp.json()}
+        return state
+```
+
 **Never mutate state — always return `{**state, "field": new_value}`.**
+
+**Adding a new node type:**
+1. Create `vaaniq/graph/nodes/<type>.py` with a class extending `BaseNode`
+2. Register it in `NODE_REGISTRY` in `vaaniq/graph/nodes/__init__.py`
+3. Add the React Flow node component in the frontend
 
 ---
 
@@ -233,44 +334,47 @@ Tools are registered in `TOOL_REGISTRY` (in `vaaniq-tools`). When an `llm_respon
 
 ## Template Variable Syntax
 
-Used in `run_tool` input configs to inject runtime state values:
+Used in `run_tool`, `http_request`, `set_variable`, and `send_message` configs to inject runtime state values. Resolved by `TemplateResolver` before the node executes.
 
 ```
-{{collected.name}}    →  state["collected"]["name"]
-{{collected.date}}    →  state["collected"]["date"]
-{{user.id}}           →  state["user_id"]
-{{crm.email}}         →  state["crm_record"]["email"]
-{{channel}}           →  "voice" | "chat" | "whatsapp"
+{{collected.name}}        →  state["collected"]["name"]
+{{collected.date}}        →  state["collected"]["date"]
+{{user.id}}               →  state["user_id"]
+{{crm.email}}             →  state["crm_record"]["email"]
+{{channel}}               →  "voice" | "chat" | "whatsapp"
+{{org_keys.webhook_key}}  →  org_keys["webhook_key"]  (for http_request headers/auth)
+{{webhook_result.id}}     →  state["webhook_result"]["id"]  (from previous http_request)
 ```
-
-Resolved by `TemplateResolver` at node call time, before the tool is invoked.
 
 ---
 
 ## Guard Nodes — Global Overrides
 
-Guards are checked on every turn before the main graph executes. They form a preamble subgraph compiled ahead of the main graph.
+Guards are defined at the top level of `graph_config` (not inside `nodes`). They form a preamble subgraph compiled ahead of the main graph and run on every turn before the main graph resumes.
 
 ```
 Every turn:
-  → run guards (anger detection, profanity, off-topic, etc.)
-  → if triggered: jump to configured target node (e.g. transfer_human)
-  → if all clean: enter main graph at current node
+  → run guards in order (anger detection, profanity, off-topic, etc.)
+  → first match wins: jump to configured target_node
+  → if none match: enter main graph at current node
 ```
 
-A guard config:
 ```json
 {
-  "type": "guard",
-  "config": {
-    "condition_prompt": "Is the user expressing anger or frustration?",
-    "action": "transfer",
-    "target_node": "transfer_human"
-  }
+  "guards": [
+    {
+      "condition_prompt": "Is the user expressing anger or serious frustration?",
+      "action": "jump",
+      "target_node": "transfer_human"
+    },
+    {
+      "condition_prompt": "Is the user asking to speak to a human?",
+      "action": "jump",
+      "target_node": "transfer_human"
+    }
+  ]
 }
 ```
-
-Multiple guards run in order — first match wins.
 
 ---
 
@@ -282,7 +386,7 @@ Multiple guards run in order — first match wins.
 Start → LLM Response (with user's system prompt + tools) → End
 ```
 
-Same `GraphBuilder`, same runtime. Simple mode is just a convenience shorthand that skips the visual canvas.
+Same `GraphBuilder`, same runtime. Simple mode is just a convenience shorthand that skips the visual canvas. Useful for onboarding and non-technical users.
 
 ---
 
@@ -290,16 +394,32 @@ Same `GraphBuilder`, same runtime. Simple mode is just a convenience shorthand t
 
 ```python
 # Stream both tokens and node execution events
-async for event in graph.astream_events(initial_state, config={"configurable": {"thread_id": session_id}}):
+async for event in graph.astream_events(
+    initial_state,
+    config={"configurable": {"thread_id": session_id}},
+):
     if event["event"] == "on_chat_model_stream":
-        yield event["data"]["chunk"].content   # token for SSE/TTS
+        yield event["data"]["chunk"].content        # token → SSE / TTS
     if event["event"] == "on_chain_start":
         yield {"node": event["name"], "status": "running"}  # live debugger
 ```
 
 - **Voice:** tokens → Pipecat TTS → audio
 - **Chat:** tokens → SSE → browser
-- **Live debugger:** node execution events → SSE → graph UI highlights active node
+- **Live debugger:** node execution events → SSE → graph UI highlights active node in real time
+
+---
+
+## Competitive Landscape
+
+| Tool | What it is | Why we don't use it |
+|---|---|---|
+| **LangGraph Studio** | Desktop debugger for LangGraph code | Debugger only — you still write Python by hand; not a visual builder |
+| **LangSmith Fleet** | Enterprise agent management (no-code templates) | Paid/closed, not voice-focused, no BYOK, no multi-tenancy |
+| **Flowise** | Visual builder for LangChain text chains | Text-first, not LangGraph-native, no voice/WhatsApp, no BYOK model |
+| **Langflow** | Similar to Flowise (Python-based) | Same limitations as Flowise |
+
+**Vaaniq is the first open-source visual LangGraph builder for voice/chat/WhatsApp agents.** All existing tools are either text-only, closed source, or debuggers rather than builders.
 
 ---
 
@@ -311,3 +431,5 @@ async for event in graph.astream_events(initial_state, config={"configurable": {
 - **Don't build a custom audio pipeline** — voice I/O is Pipecat/LiveKit's job; this package only handles graph logic
 - **Don't add node types without registering in NODE_REGISTRY** — the builder will KeyError at runtime
 - **Don't put routing logic inside edge definitions** — routing belongs in the condition node; edges just map labels to targets
+- **Don't implement the Code node (Tier 3) in v1** — HTTP Request node covers all custom tool use cases for now
+- **Don't expose raw LangGraph primitives** (`Send`, `interrupt`) directly as node types — wrap them in user-friendly abstractions (`parallel`, `delay`)
