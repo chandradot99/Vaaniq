@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import String, DateTime, ForeignKey, func, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from vaaniq.server.core.database import Base
+from vaaniq.server.auth.constants import OrgRole
 
 
 class User(Base):
@@ -33,7 +34,7 @@ class OrgMember(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     org_id: Mapped[str] = mapped_column(String, ForeignKey("organizations.id"), nullable=False)
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False, index=True)
-    role: Mapped[str] = mapped_column(String, default="member")
+    role: Mapped[str] = mapped_column(String, default=OrgRole.MEMBER)  # OrgRole value
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -66,7 +67,7 @@ class RefreshToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-class Invitation(Base):
+class Invitation(Base):  # role is OrgRole value
     """Org member invitations. token_hash = sha256(raw_token) sent in the invite email."""
     __tablename__ = "invitations"
 

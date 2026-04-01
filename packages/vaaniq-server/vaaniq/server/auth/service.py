@@ -9,6 +9,7 @@ from vaaniq.server.core.security import (
     hash_token,
 )
 from vaaniq.server.auth.config import auth_settings
+from vaaniq.server.auth.constants import OrgRole
 from vaaniq.server.auth.models import User, Organization, OrgMember
 from vaaniq.server.auth.repository import AuthRepository
 from vaaniq.server.auth.schemas import RegisterRequest, TokenResponse
@@ -26,9 +27,9 @@ class AuthService:
         user = await self.repo.create_user(data.email, data.name)
         await self.repo.create_email_identity(user.id, hash_password(data.password))
         org = await self.repo.create_org(data.org_name, user.id)
-        await self.repo.add_org_member(org.id, user.id, "owner")
+        await self.repo.add_org_member(org.id, user.id, OrgRole.OWNER)
 
-        tokens = await self._issue_tokens(user, org.id, "owner")
+        tokens = await self._issue_tokens(user, org.id, OrgRole.OWNER)
         await self.db.commit()
 
         log.info("user_registered", user_id=user.id, org_id=org.id)
@@ -51,7 +52,7 @@ class AuthService:
             raise InvalidCredentials()
 
         member, org = next(
-            ((m, o) for m, o in memberships if m.role == "owner"),
+            ((m, o) for m, o in memberships if m.role == OrgRole.OWNER),
             memberships[0],
         )
 

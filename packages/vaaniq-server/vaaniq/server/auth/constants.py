@@ -1,3 +1,11 @@
-# Auth domain constants
-# JWT settings are in auth/config.py (env-driven)
-# Error messages are in auth/exceptions.py
+from enum import StrEnum
+
+DEFAULT_JWT_ALGORITHM = "HS256"
+DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 15
+DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+
+class OrgRole(StrEnum):
+    OWNER = "owner"
+    ADMIN = "admin"
+    MEMBER = "member"

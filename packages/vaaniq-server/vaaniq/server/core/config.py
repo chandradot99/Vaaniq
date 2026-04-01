@@ -1,14 +1,17 @@
+from pathlib import Path
 from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Resolves to packages/vaaniq-server/.env regardless of working directory
+_ENV_FILE = Path(__file__).parents[3] / ".env"
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=_ENV_FILE, extra="ignore")
 
     database_url: str = "postgresql+asyncpg://vaaniq:vaaniq@localhost:5432/vaaniq"
     database_replica_url: Optional[str] = None
     redis_url: str = "redis://localhost:6379/0"
-    secret_key: str = "change-me-in-production"
     fernet_key: str = ""
     allowed_origins: str = "http://localhost:3000"
     sentry_dsn: Optional[str] = None
