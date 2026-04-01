@@ -11,6 +11,10 @@ class AuthConfig(BaseSettings):
     refresh_token_expire_days: int = 7
 
     @property
+    def access_token_expire(self) -> timedelta:
+        return timedelta(minutes=self.access_token_expire_minutes)
+
+    @property
     def refresh_token_expire(self) -> timedelta:
         return timedelta(days=self.refresh_token_expire_days)
 

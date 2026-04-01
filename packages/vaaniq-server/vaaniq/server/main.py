@@ -6,8 +6,6 @@ from vaaniq.server.core.config import settings
 from vaaniq.server.core.observability import setup_observability
 from vaaniq.server.middleware.cors import add_cors
 from vaaniq.server.auth.router import router as auth_router
-from vaaniq.server.agents.router import router as agents_router
-from vaaniq.server.webhooks.router import router as webhooks_router
 
 
 @asynccontextmanager
@@ -29,8 +27,6 @@ Instrumentator().instrument(app).expose(app)
 
 # Routers
 app.include_router(auth_router)
-app.include_router(agents_router)
-app.include_router(webhooks_router)
 
 
 @app.get("/health")

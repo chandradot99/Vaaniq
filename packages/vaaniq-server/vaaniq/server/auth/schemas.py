@@ -25,14 +25,20 @@ class LoginRequest(CustomModel):
     password: str
 
 
+class RefreshRequest(CustomModel):
+    refresh_token: str
+
+
+class LogoutRequest(CustomModel):
+    refresh_token: str
+
+
 class TokenResponse(CustomModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
-
-
-class RefreshRequest(CustomModel):
-    refresh_token: str
+    org_id: str
+    role: str
 
 
 class UserResponse(CustomModel):
@@ -41,3 +47,4 @@ class UserResponse(CustomModel):
     name: str
     org_id: str
     org_name: str
+    role: str
