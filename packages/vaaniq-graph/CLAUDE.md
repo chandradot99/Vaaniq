@@ -298,9 +298,10 @@ class GraphBuilder:
                 mapping,
             )
 
-        workflow.set_entry_point(graph_config["entry_point"])
+        workflow.add_edge(START, graph_config["entry_point"])  # preferred over set_entry_point()
 
-        checkpointer = PostgresSaver.from_conn_string(settings.database_url)
+        # Use AsyncPostgresSaver — our stack is fully async
+        # Call checkpointer.setup() once at startup to create its tables
         return workflow.compile(checkpointer=checkpointer)
 ```
 
@@ -392,21 +393,44 @@ Same `GraphBuilder`, same runtime. Simple mode is just a convenience shorthand t
 
 ## Streaming
 
+LangGraph's own streaming API (not LangChain's `astream_events`). Use `version="v2"` for the unified `StreamPart` format.
+
 ```python
-# Stream both tokens and node execution events
-async for event in graph.astream_events(
-    initial_state,
+# Stream LLM tokens + node state updates
+async for part in graph.astream(
+    Command(resume=user_message),          # or initial_state on first turn
     config={"configurable": {"thread_id": session_id}},
+    stream_mode=["messages", "updates"],   # messages=tokens, updates=node events
+    version="v2",
 ):
-    if event["event"] == "on_chat_model_stream":
-        yield event["data"]["chunk"].content        # token → SSE / TTS
-    if event["event"] == "on_chain_start":
-        yield {"node": event["name"], "status": "running"}  # live debugger
+    if part["type"] == "messages":
+        token, metadata = part["data"]
+        yield token.content                # LLM token → SSE / TTS
+    elif part["type"] == "updates":
+        node_name, state_delta = next(iter(part["data"].items()))
+        yield {"node": node_name, "status": "running"}  # live debugger
 ```
 
 - **Voice:** tokens → Pipecat TTS → audio
 - **Chat:** tokens → SSE → browser
-- **Live debugger:** node execution events → SSE → graph UI highlights active node in real time
+- **Live debugger:** `"updates"` stream → SSE → graph UI highlights active node in real time
+
+## Multi-Turn — First Turn vs Resume
+
+```python
+from langgraph.types import Command
+
+# First turn — provide full initial state
+await graph.ainvoke(initial_state, config={"configurable": {"thread_id": session_id}})
+
+# Every subsequent turn — resume after interrupt()
+await graph.ainvoke(
+    Command(resume=user_message_text),
+    config={"configurable": {"thread_id": session_id}},
+)
+```
+
+`collect_data` and any other node using `interrupt()` pauses the graph and waits for `Command(resume=...)`. The session handler (voice/chat channel) is responsible for calling resume on each user turn.
 
 ---
 

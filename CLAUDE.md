@@ -33,7 +33,7 @@
 Vaaniq is built as **multiple composable Python packages** under a shared namespace. This is the most critical architectural decision — it enables independent versioning, isolated testing, and community contributions per package.
 
 ```
-pip install vaaniq-core      # base classes + SessionState — no external deps
+pip install vaaniq-core      # SessionState + AgentConfig — no external deps
 pip install vaaniq-graph     # visual LangGraph execution engine
 pip install vaaniq-voice     # voice pipeline (STT → graph → TTS) — Pipecat for PSTN, LiveKit for WebRTC
 pip install vaaniq-rag       # RAG pipeline + vector DB connectors
@@ -143,12 +143,7 @@ vaaniq/                              ← GitHub repo root
 │   │   ├── tests/
 │   │   └── vaaniq/core/
 │   │       ├── __init__.py
-│   │       ├── state.py            ← SessionState TypedDict
-│   │       ├── nodes.py            ← BaseNode abstract class
-│   │       ├── tools.py            ← BaseTool abstract class
-│   │       ├── channels.py         ← BaseChannel abstract class
-│   │       ├── vector_db.py        ← BaseVectorDB abstract class
-│   │       ├── providers.py        ← BaseLLM, BaseSTT, BaseTTS abstract
+│   │       ├── state.py            ← SessionState, Message, ToolCall TypedDicts
 │   │       └── config.py           ← AgentConfig schema (Pydantic)
 │   │
 │   ├── vaaniq-graph/
@@ -157,20 +152,22 @@ vaaniq/                              ← GitHub repo root
 │   │   └── vaaniq/graph/
 │   │       ├── __init__.py
 │   │       ├── builder.py          ← GraphBuilder: JSON → LangGraph
-│   │       ├── runner.py           ← execute graph, emit debug events
-│   │       ├── serializer.py       ← graph ↔ JSON serialisation
+│   │       ├── state.py            ← GraphSessionState with LangGraph reducers
+│   │       ├── resolver.py         ← TemplateResolver: {{variable}} → runtime values
 │   │       └── nodes/              ← built-in node type implementations
 │   │           ├── __init__.py     ← NODE_REGISTRY dict
-│   │           ├── base.py         ← BaseNode class
+│   │           ├── base.py         ← BaseNode abstract class
+│   │           ├── llm.py          ← LLM provider factory (OpenAI/Anthropic)
 │   │           ├── llm_response.py
 │   │           ├── condition.py
 │   │           ├── collect_data.py
-│   │           ├── run_tool.py
-│   │           ├── rag_search.py
+│   │           ├── run_tool.py     ← stub until vaaniq-tools implemented
+│   │           ├── rag_search.py   ← stub until vaaniq-rag implemented
+│   │           ├── http_request.py
+│   │           ├── set_variable.py
 │   │           ├── transfer_human.py
 │   │           ├── end_session.py
-│   │           ├── post_session_action.py
-│   │           └── guard.py
+│   │           └── post_session_action.py
 │   │
 │   ├── vaaniq-voice/
 │   │   ├── pyproject.toml
