@@ -8,6 +8,7 @@ from vaaniq.server.middleware.cors import add_cors
 from vaaniq.server.auth.router import router as auth_router
 from vaaniq.server.agents.router import router as agents_router
 from vaaniq.server.api_keys.router import router as api_keys_router
+from vaaniq.server.chat.router import router as chat_router
 
 
 @asynccontextmanager
@@ -31,6 +32,7 @@ Instrumentator().instrument(app).expose(app)
 app.include_router(auth_router)
 app.include_router(agents_router)
 app.include_router(api_keys_router)
+app.include_router(chat_router)
 
 
 @app.get("/health")

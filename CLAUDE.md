@@ -853,6 +853,13 @@ Always keep the Indian market in mind — it's a key differentiator:
 
 ---
 
+## After Every Change
+
+- **Run `uv run pytest packages/vaaniq-server/tests/ -v` and fix any failures before considering the task done**
+- **Check for Python warnings** — run with `-W error` in CI; deprecation warnings from Pydantic/SQLAlchemy must be fixed, not suppressed
+
+---
+
 ## Code Style
 
 - Python: PEP 8, type hints everywhere, async/await throughout

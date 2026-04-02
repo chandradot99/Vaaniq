@@ -8,6 +8,7 @@ To add a new node type:
 """
 from vaaniq.graph.nodes.collect_data import CollectDataNode
 from vaaniq.graph.nodes.condition import ConditionNode
+from vaaniq.graph.nodes.inbound_message import InboundMessageNode
 from vaaniq.graph.nodes.end_session import EndSessionNode
 from vaaniq.graph.nodes.http_request import HttpRequestNode
 from vaaniq.graph.nodes.llm_response import LLMResponseNode
@@ -18,6 +19,8 @@ from vaaniq.graph.nodes.set_variable import SetVariableNode
 from vaaniq.graph.nodes.transfer_human import TransferHumanNode
 
 NODE_REGISTRY: dict[str, type] = {
+    # Input
+    "inbound_message":     InboundMessageNode,
     # Logic
     "llm_response":        LLMResponseNode,
     "condition":           ConditionNode,

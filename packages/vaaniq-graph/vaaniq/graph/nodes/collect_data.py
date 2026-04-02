@@ -64,7 +64,8 @@ class CollectDataNode(BaseNode):
             # Pause and wait for user response
             # Session handler resumes with: Command(resume=user_message_text)
             user_response: str = interrupt({
-                "question": pending["prompt"],
+                "type": "collect_question",
+                "content": pending["prompt"],
                 "field": pending["name"],
             })
 
@@ -78,14 +79,9 @@ class CollectDataNode(BaseNode):
                 # Re-ask with a gentle nudge
                 reason = extracted.get("reason", "")
                 re_ask = f"Sorry, I didn't quite catch that. {reason} {pending['prompt']}".strip()
-                re_ask_msg: Message = {
-                    "role": "agent",
-                    "content": re_ask,
-                    "timestamp": now,
-                    "node_id": "collect_data",
-                }
                 user_response = interrupt({
-                    "question": re_ask,
+                    "type": "collect_question",
+                    "content": re_ask,
                     "field": pending["name"],
                 })
                 extracted = await self._extract(pending, user_response)
