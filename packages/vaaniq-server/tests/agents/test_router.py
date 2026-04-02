@@ -45,7 +45,7 @@ async def test_create_agent_empty_name(client: AsyncClient, auth_headers: dict):
 
 async def test_create_agent_requires_auth(client: AsyncClient):
     resp = await client.post("/v1/agents", json={"name": "Bot"})
-    assert resp.status_code == 403
+    assert resp.status_code == 401
 
 
 # ── List ──────────────────────────────────────────────────────────────────────

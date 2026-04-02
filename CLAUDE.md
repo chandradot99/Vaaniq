@@ -849,6 +849,7 @@ Always keep the Indian market in mind — it's a key differentiator:
 - **Don't use `*` for CORS in production** — explicit allowlist only
 - **Don't skip observability** — Sentry DSN and structlog fields are mandatory from Sprint 1
 - **Don't trust webhook payloads without signature validation** — always verify Twilio-Signature / WA HMAC
+- **Don't commit or push unless the user explicitly asks** — never auto-commit after finishing a feature
 
 ---
 
