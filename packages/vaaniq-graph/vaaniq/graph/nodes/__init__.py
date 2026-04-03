@@ -8,6 +8,7 @@ To add a new node type:
 """
 from vaaniq.graph.nodes.collect_data import CollectDataNode
 from vaaniq.graph.nodes.condition import ConditionNode
+from vaaniq.graph.nodes.human_review import HumanReviewNode
 from vaaniq.graph.nodes.inbound_message import InboundMessageNode
 from vaaniq.graph.nodes.end_session import EndSessionNode
 from vaaniq.graph.nodes.http_request import HttpRequestNode
@@ -26,6 +27,8 @@ NODE_REGISTRY: dict[str, type] = {
     "condition":           ConditionNode,
     "collect_data":        CollectDataNode,
     "set_variable":        SetVariableNode,
+    # Human-in-the-loop
+    "human_review":        HumanReviewNode,
     # Action
     "run_tool":            RunToolNode,
     "http_request":        HttpRequestNode,

@@ -7,13 +7,16 @@ from vaaniq.server.core.observability import setup_observability
 from vaaniq.server.middleware.cors import add_cors
 from vaaniq.server.auth.router import router as auth_router
 from vaaniq.server.agents.router import router as agents_router
-from vaaniq.server.api_keys.router import router as api_keys_router
+from vaaniq.server.integrations.router import router as integrations_router
+from vaaniq.server.tools.router import router as tools_router
 from vaaniq.server.chat.router import router as chat_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_observability()
+    from vaaniq.server.chat.checkpointer import setup_checkpointer
+    await setup_checkpointer()
     yield
 
 
@@ -31,7 +34,8 @@ Instrumentator().instrument(app).expose(app)
 # Routers
 app.include_router(auth_router)
 app.include_router(agents_router)
-app.include_router(api_keys_router)
+app.include_router(integrations_router)
+app.include_router(tools_router)
 app.include_router(chat_router)
 
 

@@ -14,14 +14,31 @@ from vaaniq.server.agents.exceptions import AgentNotFound, AgentAccessDenied
 log = structlog.get_logger()
 
 
-def _simple_graph(system_prompt: str) -> dict:
-    """Auto-generate a minimal graph for simple_mode agents."""
+def _default_graph(system_prompt: str) -> dict:
+    """Generate the default multi-turn graph for new agents.
+
+    Layout (left-to-right):
+      [inbound_message] → [llm_response] → [inbound_message]  (conversation loop)
+      [end_session] placed on canvas, disconnected — user wires it when ready.
+
+    This is the industry-standard conversational agent pattern: the graph
+    loops on inbound_message until the LLM or a branch explicitly ends the
+    session. Single-turn (llm_response → end) is just the degenerate case
+    of this loop.
+    """
     return {
-        "entry_point": "llm_response",
+        "entry_point": "inbound_message",
         "nodes": [
+            {
+                "id": "inbound_message",
+                "type": "inbound_message",
+                "position": {"x": 100, "y": 200},
+                "config": {},
+            },
             {
                 "id": "llm_response",
                 "type": "llm_response",
+                "position": {"x": 400, "y": 200},
                 "config": {
                     "instructions": system_prompt or "You are a helpful assistant.",
                     "tools": [],
@@ -29,13 +46,15 @@ def _simple_graph(system_prompt: str) -> dict:
                 },
             },
             {
-                "id": "end",
+                "id": "end_session",
                 "type": "end_session",
+                "position": {"x": 700, "y": 350},
                 "config": {"farewell_message": DEFAULT_FAREWELL_MESSAGE},
             },
         ],
         "edges": [
-            {"id": "e1", "source": "llm_response", "target": "end"},
+            {"id": "e1", "source": "inbound_message", "target": "llm_response"},
+            {"id": "e2", "source": "llm_response", "target": "inbound_message"},
         ],
     }
 
@@ -62,8 +81,8 @@ class AgentService:
 
     async def create(self, org_id: str, data: CreateAgentRequest) -> AgentResponse:
         graph_config = data.graph_config
-        if data.simple_mode and graph_config is None:
-            graph_config = _simple_graph(data.system_prompt)
+        if graph_config is None:
+            graph_config = _default_graph(data.system_prompt)
 
         agent = await self.repo.create(
             org_id=org_id,
@@ -103,9 +122,9 @@ class AgentService:
             k: v for k, v in data.model_dump(exclude_unset=True).items() if v is not None
         }
 
-        # If system_prompt changed and agent is in simple_mode, regenerate graph
+        # If system_prompt changed and no custom graph has been set, regenerate default graph
         if "system_prompt" in fields and agent.simple_mode:
-            fields["graph_config"] = _simple_graph(fields["system_prompt"])
+            fields["graph_config"] = _default_graph(fields["system_prompt"])
 
         if fields:
             await self.repo.update(agent_id, **fields)

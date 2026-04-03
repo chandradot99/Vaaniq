@@ -1,58 +1,46 @@
 """
-ChatService — runs agent graphs for text chat sessions (dev/testing).
+ChatService — runs agent graphs for text chat sessions.
 
-Uses InMemorySaver as checkpointer so no extra DB table is needed.
-The module-level singletons (_checkpointer, _sessions) live for the
-lifetime of the server process — this is intentional for testing.
-For production, replace InMemorySaver with AsyncPostgresSaver and
-store session metadata in Redis.
+Uses AsyncPostgresSaver (via chat/checkpointer.py) so conversation state
+survives server restarts. Session metadata (transcript, status) is stored
+in the sessions table via SessionRepository.
 
 Multi-turn flow:
   start()   → graph.ainvoke(initial_state)     → graph runs until interrupt or END
   message() → graph.ainvoke(Command(resume=…)) → graph resumes until next interrupt or END
 
-Interrupt types:
-  {"type": "user_input"}       — inbound_message node waiting for user (no agent msg to show)
-  {"type": "collect_question", "content": "…"} — collect_data asking for a field (show as agent msg)
+Interrupt types surfaced to the frontend:
+  {"type": "user_input"}                           — inbound_message node waiting (no agent msg)
+  {"type": "collect_question", "content": "…"}    — collect_data asking for a field
+  {"type": "human_review", "message": "…", ...}   — human_review node waiting for approval
 """
-
-import uuid
+import json
 import structlog
+from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 
-from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vaaniq.graph.builder import GraphBuilder
 from vaaniq.server.agents.repository import AgentRepository
-from vaaniq.server.api_keys.repository import ApiKeyRepository
-from vaaniq.server.core.encryption import decrypt_key
+from vaaniq.server.chat.checkpointer import get_checkpointer, make_thread_id
 from vaaniq.server.chat.exceptions import ChatSessionNotFound, ChatSessionEnded
+from vaaniq.server.chat.repository import SessionRepository
 from vaaniq.server.chat.schemas import ChatMessage, StartChatResponse, SendMessageResponse
 
 log = structlog.get_logger()
 
-# ── Module-level state (dev/testing) ─────────────────────────────────────────
-_checkpointer = InMemorySaver()
-
-# session_id → {agent_id, org_id, ended}
-_sessions: dict[str, dict] = {}
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 async def _get_org_keys(org_id: str, db: AsyncSession) -> dict:
-    """Return decrypted BYOK keys for the org as {service: plaintext_key}."""
-    keys = await ApiKeyRepository(db).list_by_org(org_id)
-    return {k.service: decrypt_key(k.encrypted_key) for k in keys}
+    from vaaniq.server.integrations.service import PostgresCredentialStore
+    return await PostgresCredentialStore(db).get_org_keys(org_id)
 
 
-def _extract_new_agent_messages(
-    all_messages: list[dict],
-    cursor: int,
-) -> list[ChatMessage]:
-    """Return agent messages added after cursor position."""
+def _extract_new_agent_messages(all_messages: list[dict], cursor: int) -> list[ChatMessage]:
     return [
         ChatMessage(role=m["role"], content=m["content"])
         for m in all_messages[cursor:]
@@ -60,18 +48,25 @@ def _extract_new_agent_messages(
     ]
 
 
-async def _get_interrupt_agent_message(graph, config: dict) -> ChatMessage | None:
-    """
-    If the graph is currently interrupted, extract an agent-facing message
-    from the interrupt value (used by collect_data questions).
-    Returns None for inbound_message interrupts (no agent message to surface).
-    """
+async def _get_interrupt_info(graph, config: dict) -> dict | None:
+    """Return the interrupt value from the current paused task, or None."""
     state_info = await graph.aget_state(config)
     for task in state_info.tasks:
         for intr in task.interrupts:
-            v = intr.value
-            if isinstance(v, dict) and v.get("type") == "collect_question":
-                return ChatMessage(role="agent", content=v["content"])
+            if isinstance(intr.value, dict):
+                return intr.value
+    return None
+
+
+def _make_interrupt_message(interrupt_info: dict) -> ChatMessage | None:
+    """Convert an interrupt payload into a ChatMessage for the frontend, if applicable."""
+    itype = interrupt_info.get("type")
+    if itype == "collect_question":
+        return ChatMessage(role="agent", content=interrupt_info.get("content", ""))
+    if itype == "human_review":
+        # Serialise into a JSON string so the frontend can detect and render Approve/Reject
+        import json
+        return ChatMessage(role="agent", content=json.dumps(interrupt_info))
     return None
 
 
@@ -106,6 +101,7 @@ def _initial_state(session_id: str, agent_id: str, org_id: str) -> dict:
 
 # ── Service ───────────────────────────────────────────────────────────────────
 
+
 async def start_session(
     agent_id: str,
     org_id: str,
@@ -116,25 +112,39 @@ async def start_session(
         raise ChatSessionNotFound()
 
     org_keys = await _get_org_keys(org_id, db)
-    graph = await GraphBuilder().build(agent.graph_config, org_keys, _checkpointer)
+    checkpointer = get_checkpointer()
+    graph = await GraphBuilder().build(agent.graph_config, org_keys, checkpointer)
 
-    session_id = str(uuid.uuid4())
-    config = {"configurable": {"thread_id": session_id}}
+    # Persist session record before invoking the graph
+    session_repo = SessionRepository(db)
+    session = await session_repo.create(org_id=org_id, agent_id=agent_id)
+    await db.flush()  # get session.id without committing
+    session_id = session.id
+
+    thread_id = make_thread_id(org_id, session_id)
+    config = {"configurable": {"thread_id": thread_id}}
 
     result = await graph.ainvoke(_initial_state(session_id, agent_id, org_id), config=config)
 
     session_ended: bool = result.get("session_ended", False)
-    _sessions[session_id] = {"agent_id": agent_id, "org_id": org_id, "ended": session_ended}
 
-    # Collect messages: agent messages now in state + possible collect_question interrupt
     all_messages: list[dict] = result.get("messages", [])
     new_msgs = _extract_new_agent_messages(all_messages, 0)
 
     if not session_ended:
-        interrupt_msg = await _get_interrupt_agent_message(graph, config)
-        if interrupt_msg:
-            new_msgs.append(interrupt_msg)
+        interrupt_info = await _get_interrupt_info(graph, config)
+        if interrupt_info:
+            msg = _make_interrupt_message(interrupt_info)
+            if msg:
+                new_msgs.append(msg)
+    else:
+        await session_repo.mark_ended(
+            session_id,
+            transcript=all_messages,
+            tool_calls=result.get("tool_calls", []),
+        )
 
+    await db.commit()
     log.info("chat_session_started", session_id=session_id, agent_id=agent_id, org_id=org_id)
 
     return StartChatResponse(
@@ -149,35 +159,141 @@ async def send_message(
     user_message: str,
     db: AsyncSession,
 ) -> SendMessageResponse:
-    session = _sessions.get(session_id)
+    session_repo = SessionRepository(db)
+    session = await session_repo.get(session_id)
     if not session:
         raise ChatSessionNotFound()
-    if session["ended"]:
+    if session.status == "ended":
         raise ChatSessionEnded()
 
-    agent = await AgentRepository(db).get_by_id(session["agent_id"])
-    org_keys = await _get_org_keys(session["org_id"], db)
-    graph = await GraphBuilder().build(agent.graph_config, org_keys, _checkpointer)
+    agent = await AgentRepository(db).get_by_id(session.agent_id)
+    org_keys = await _get_org_keys(session.org_id, db)
+    checkpointer = get_checkpointer()
+    graph = await GraphBuilder().build(agent.graph_config, org_keys, checkpointer)
 
-    config = {"configurable": {"thread_id": session_id}}
+    thread_id = make_thread_id(session.org_id, session_id)
+    config = {"configurable": {"thread_id": thread_id}}
 
-    # Note how many messages are in state before this turn
     state_before = await graph.aget_state(config)
     cursor = len(state_before.values.get("messages", []))
 
     result = await graph.ainvoke(Command(resume=user_message), config=config)
 
     session_ended: bool = result.get("session_ended", False)
-    session["ended"] = session_ended
-
     all_messages: list[dict] = result.get("messages", [])
     new_msgs = _extract_new_agent_messages(all_messages, cursor)
 
     if not session_ended:
-        interrupt_msg = await _get_interrupt_agent_message(graph, config)
-        if interrupt_msg:
-            new_msgs.append(interrupt_msg)
+        interrupt_info = await _get_interrupt_info(graph, config)
+        if interrupt_info:
+            msg = _make_interrupt_message(interrupt_info)
+            if msg:
+                new_msgs.append(msg)
+    else:
+        await session_repo.mark_ended(
+            session_id,
+            transcript=all_messages,
+            tool_calls=result.get("tool_calls", []),
+        )
 
+    await db.commit()
     log.info("chat_message_processed", session_id=session_id, session_ended=session_ended)
 
     return SendMessageResponse(messages=new_msgs, session_ended=session_ended)
+
+
+# ── Streaming send ────────────────────────────────────────────────────────────
+
+
+def _sse(event_type: str, payload: dict) -> str:
+    """Format a single SSE event line."""
+    return f"data: {json.dumps({'type': event_type, **payload})}\n\n"
+
+
+async def stream_message(
+    session_id: str,
+    user_message: str,
+    db: AsyncSession,
+) -> AsyncGenerator[str, None]:
+    """Yield SSE events for a single user turn.
+
+    Event types:
+        token        — LLM text chunk (stream_mode="messages")
+        node_start   — graph node began executing
+        node_end     — graph node finished
+        human_review — graph paused waiting for approval
+        ended        — turn complete; includes session_ended flag
+        error        — session not found / already ended
+    """
+    session_repo = SessionRepository(db)
+    session = await session_repo.get(session_id)
+    if not session:
+        yield _sse("error", {"message": "Session not found"})
+        return
+    if session.status == "ended":
+        yield _sse("error", {"message": "Session has already ended"})
+        return
+
+    agent = await AgentRepository(db).get_by_id(session.agent_id)
+    org_keys = await _get_org_keys(session.org_id, db)
+    checkpointer = get_checkpointer()
+    graph = await GraphBuilder().build(agent.graph_config, org_keys, checkpointer)
+
+    thread_id = make_thread_id(session.org_id, session_id)
+    config = {"configurable": {"thread_id": thread_id}}
+
+    # Nodes we don't want to surface as node_start/end events (LangGraph internals)
+    _SKIP_NODES = {"LangGraph", "__start__", ""}
+
+    try:
+        async for event in graph.astream_events(
+            Command(resume=user_message),
+            config=config,
+            version="v2",
+        ):
+            kind: str = event["event"]
+            name: str = event.get("name", "")
+
+            if kind == "on_chat_model_stream":
+                chunk = event["data"].get("chunk")
+                if chunk and getattr(chunk, "content", None):
+                    yield _sse("token", {"content": chunk.content})
+
+            elif kind == "on_chain_start" and name not in _SKIP_NODES:
+                yield _sse("node_start", {"node": name})
+
+            elif kind == "on_chain_end" and name not in _SKIP_NODES:
+                yield _sse("node_end", {"node": name})
+
+    except Exception as exc:
+        log.error("chat_stream_error", session_id=session_id, error=str(exc))
+        yield _sse("error", {"message": "An error occurred during processing"})
+        return
+
+    # After stream ends, inspect state for interrupts (human_review, collect_data)
+    state_after = await graph.aget_state(config)
+    interrupt_info: dict | None = None
+    for task in (state_after.tasks or []):
+        for intr in (getattr(task, "interrupts", None) or []):
+            if isinstance(intr.value, dict):
+                interrupt_info = intr.value
+                break
+
+    if interrupt_info:
+        itype = interrupt_info.get("type", "interrupt")
+        yield _sse(itype, interrupt_info)
+
+    state_values = state_after.values or {}
+    session_ended: bool = state_values.get("session_ended", False)
+
+    if session_ended:
+        all_messages = state_values.get("messages", [])
+        await session_repo.mark_ended(
+            session_id,
+            transcript=all_messages,
+            tool_calls=state_values.get("tool_calls", []),
+        )
+        await db.commit()
+
+    yield _sse("ended", {"session_ended": session_ended})
+    log.info("chat_stream_complete", session_id=session_id, session_ended=session_ended)

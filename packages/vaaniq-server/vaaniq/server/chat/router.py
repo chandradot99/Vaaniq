@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vaaniq.server.core.database import get_db
@@ -27,3 +28,24 @@ async def send_message(
     db: AsyncSession = Depends(get_db),
 ) -> SendMessageResponse:
     return await service.send_message(body.session_id, body.message, db)
+
+
+@router.post("/stream")
+async def stream_message(
+    body: SendMessageRequest,
+    _current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> StreamingResponse:
+    """Stream agent response tokens as Server-Sent Events.
+
+    Event format: each line is `data: <json>\\n\\n`
+    Event types: token | node_start | node_end | human_review | ended | error
+    """
+    return StreamingResponse(
+        service.stream_message(body.session_id, body.message, db),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # disable nginx buffering for SSE
+        },
+    )
