@@ -14,3 +14,8 @@ class NotFound(VaaniqException):
 class Unauthorized(VaaniqException):
     def __init__(self, detail: str = "Unauthorized") -> None:
         super().__init__(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail)
+
+
+class Conflict(VaaniqException):
+    def __init__(self, detail: str = "Conflict") -> None:
+        super().__init__(status_code=status.HTTP_409_CONFLICT, detail=detail)

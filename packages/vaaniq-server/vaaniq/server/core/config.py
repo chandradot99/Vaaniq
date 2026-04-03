@@ -18,6 +18,21 @@ class Settings(BaseSettings):
     otel_exporter_otlp_endpoint: Optional[str] = None
     environment: str = "development"
     backend_url: str = "http://localhost:8000"
+    frontend_url: str = "http://localhost:3000"
+
+    # ── OAuth provider credentials ────────────────────────────────────────────
+    # Self-hosted deployments must register their own OAuth apps with each provider
+    # because OAuth requires pre-registered redirect URIs per deployment domain.
+    # See the setup instructions in each provider file under integrations/oauth/providers/.
+
+    # Google — register at https://console.cloud.google.com → APIs & Services → Credentials
+    google_oauth_client_id: str = ""
+    google_oauth_client_secret: str = ""
+    google_oauth_redirect_uri: str = "http://localhost:8000/v1/integrations/oauth/google/callback"
+
+    # Slack — register at https://api.slack.com/apps (future)
+    # slack_oauth_client_id: str = ""
+    # slack_oauth_client_secret: str = ""
 
     @property
     def allowed_origins_list(self) -> list[str]:

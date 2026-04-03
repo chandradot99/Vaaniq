@@ -1,0 +1,164 @@
+"""Google Calendar tools.
+
+Tools:
+    google_calendar_list_events   — list upcoming events
+    google_calendar_create_event  — create a new event
+"""
+import asyncio
+from datetime import datetime, timezone, timedelta
+from googleapiclient.discovery import build
+
+from vaaniq.tools.base import BaseTool
+from vaaniq.tools.google.auth import build_google_credentials
+
+
+def _build_service(org_keys: dict):
+    creds = build_google_credentials(org_keys)
+    return build("calendar", "v3", credentials=creds)
+
+
+class GoogleCalendarListEvents(BaseTool):
+    name = "google_calendar_list_events"
+    description = "List upcoming events from Google Calendar."
+    required_integration = "google"
+    input_schema = {
+        "type": "object",
+        "properties": {
+            "calendar_id": {
+                "type": "string",
+                "description": "Calendar ID to query. Defaults to 'primary'.",
+                "default": "primary",
+            },
+            "max_results": {
+                "type": "integer",
+                "description": "Maximum number of events to return (1–50).",
+                "default": 10,
+                "minimum": 1,
+                "maximum": 50,
+            },
+            "days_ahead": {
+                "type": "integer",
+                "description": "How many days into the future to look.",
+                "default": 7,
+                "minimum": 1,
+                "maximum": 90,
+            },
+        },
+    }
+
+    async def run(self, input: dict, org_keys: dict) -> dict:
+        calendar_id = input.get("calendar_id", "primary")
+        max_results = int(input.get("max_results", 10))
+        days_ahead = int(input.get("days_ahead", 7))
+
+        now = datetime.now(timezone.utc)
+        time_min = now.isoformat()
+        time_max = (now + timedelta(days=days_ahead)).isoformat()
+
+        def _fetch():
+            service = _build_service(org_keys)
+            result = service.events().list(
+                calendarId=calendar_id,
+                timeMin=time_min,
+                timeMax=time_max,
+                maxResults=max_results,
+                singleEvents=True,
+                orderBy="startTime",
+            ).execute()
+            return result.get("items", [])
+
+        items = await asyncio.to_thread(_fetch)
+
+        events = []
+        for item in items:
+            start = item.get("start", {})
+            events.append({
+                "id": item.get("id"),
+                "title": item.get("summary", "(No title)"),
+                "start": start.get("dateTime") or start.get("date"),
+                "end": (item.get("end", {}).get("dateTime") or item.get("end", {}).get("date")),
+                "location": item.get("location"),
+                "description": item.get("description"),
+                "attendees": [
+                    a.get("email") for a in item.get("attendees", [])
+                ],
+                "link": item.get("htmlLink"),
+            })
+
+        return {"events": events, "count": len(events)}
+
+
+class GoogleCalendarCreateEvent(BaseTool):
+    name = "google_calendar_create_event"
+    description = "Create a new event in Google Calendar."
+    required_integration = "google"
+    input_schema = {
+        "type": "object",
+        "properties": {
+            "title": {
+                "type": "string",
+                "description": "Event title / summary.",
+            },
+            "start_time": {
+                "type": "string",
+                "description": "Start datetime in ISO 8601 format, e.g. '2026-04-10T14:00:00+05:30'.",
+            },
+            "end_time": {
+                "type": "string",
+                "description": "End datetime in ISO 8601 format.",
+            },
+            "description": {
+                "type": "string",
+                "description": "Optional event description / notes.",
+            },
+            "location": {
+                "type": "string",
+                "description": "Optional location string.",
+            },
+            "attendees": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "List of attendee email addresses.",
+            },
+            "calendar_id": {
+                "type": "string",
+                "description": "Calendar ID. Defaults to 'primary'.",
+                "default": "primary",
+            },
+        },
+        "required": ["title", "start_time", "end_time"],
+    }
+
+    async def run(self, input: dict, org_keys: dict) -> dict:
+        calendar_id = input.get("calendar_id", "primary")
+
+        event_body: dict = {
+            "summary": input["title"],
+            "start": {"dateTime": input["start_time"]},
+            "end": {"dateTime": input["end_time"]},
+        }
+        if input.get("description"):
+            event_body["description"] = input["description"]
+        if input.get("location"):
+            event_body["location"] = input["location"]
+        if input.get("attendees"):
+            event_body["attendees"] = [{"email": e} for e in input["attendees"]]
+
+        def _create():
+            service = _build_service(org_keys)
+            return service.events().insert(
+                calendarId=calendar_id,
+                body=event_body,
+                sendUpdates="all" if input.get("attendees") else "none",
+            ).execute()
+
+        created = await asyncio.to_thread(_create)
+
+        return {
+            "event_id": created.get("id"),
+            "title": created.get("summary"),
+            "start": created.get("start", {}).get("dateTime"),
+            "end": created.get("end", {}).get("dateTime"),
+            "link": created.get("htmlLink"),
+            "status": created.get("status"),
+        }

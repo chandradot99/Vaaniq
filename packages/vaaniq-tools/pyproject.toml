@@ -11,7 +11,12 @@ dependencies = [
 [project.optional-dependencies]
 crm       = ["hubspot-api-client>=9.0"]
 payments  = ["razorpay>=1.4", "stripe>=7.0"]
-calendar  = ["google-api-python-client>=2.0"]
+calendar  = [
+    "google-api-python-client>=2.0",
+    "google-auth>=2.0",
+    "google-auth-httplib2>=0.2",
+    "google-auth-oauthlib>=1.0",
+]
 helpdesk  = []
 ecommerce = []
 messaging = ["twilio>=9.0", "slack-sdk>=3.0"]
