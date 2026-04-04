@@ -8,7 +8,6 @@ from vaaniq.server.agents.schemas import (
     CreateAgentRequest,
     UpdateAgentRequest,
 )
-from vaaniq.server.agents.constants import DEFAULT_FAREWELL_MESSAGE
 from vaaniq.server.agents.exceptions import AgentNotFound, AgentAccessDenied
 
 log = structlog.get_logger()
@@ -18,43 +17,54 @@ def _default_graph(system_prompt: str) -> dict:
     """Generate the default multi-turn graph for new agents.
 
     Layout (left-to-right):
-      [inbound_message] → [llm_response] → [inbound_message]  (conversation loop)
+      [start] → [inbound_message] → [llm_response] → [inbound_message]  (loop)
       [end_session] placed on canvas, disconnected — user wires it when ready.
 
-    This is the industry-standard conversational agent pattern: the graph
-    loops on inbound_message until the LLM or a branch explicitly ends the
-    session. Single-turn (llm_response → end) is just the degenerate case
-    of this loop.
+    start holds the system message and optional greeting.
+    inbound_message interrupts and waits for each user turn.
     """
     return {
-        "entry_point": "inbound_message",
+        "entry_point": "start",
         "nodes": [
+            {
+                "id": "start",
+                "type": "start",
+                "label": "Start",
+                "position": {"x": 100, "y": 200},
+                "config": {
+                    "system_message": system_prompt or "You are a helpful assistant.",
+                    "greeting": "Hello! How can I help you today?",
+                },
+            },
             {
                 "id": "inbound_message",
                 "type": "inbound_message",
-                "position": {"x": 100, "y": 200},
+                "label": "Inbound Message",
+                "position": {"x": 400, "y": 200},
                 "config": {},
             },
             {
                 "id": "llm_response",
                 "type": "llm_response",
-                "position": {"x": 400, "y": 200},
+                "label": "LLM Response",
+                "position": {"x": 700, "y": 200},
                 "config": {
-                    "instructions": system_prompt or "You are a helpful assistant.",
+                    "instructions": "",
                     "tools": [],
                     "rag_enabled": False,
                 },
             },
-            {
-                "id": "end_session",
-                "type": "end_session",
-                "position": {"x": 700, "y": 350},
-                "config": {"farewell_message": DEFAULT_FAREWELL_MESSAGE},
-            },
         ],
         "edges": [
-            {"id": "e1", "source": "inbound_message", "target": "llm_response"},
-            {"id": "e2", "source": "llm_response", "target": "inbound_message"},
+            {"id": "e1", "source": "start", "target": "inbound_message"},
+            {"id": "e2", "source": "inbound_message", "target": "llm_response"},
+            {
+                "id": "e3",
+                "source": "llm_response",
+                "target": "inbound_message",
+                "goto": True,
+                "goto_node_position": {"x": 1000, "y": 200},
+            },
         ],
     }
 
@@ -129,7 +139,7 @@ class AgentService:
         if fields:
             await self.repo.update(agent_id, **fields)
             await self.db.commit()
-            agent = await self.repo.get_by_id(agent_id)
+            await self.db.refresh(agent)
 
         log.info("agent_updated", org_id=org_id, agent_id=agent_id)
         return _to_response(agent)
@@ -143,7 +153,10 @@ class AgentService:
 
         await self.repo.update(agent_id, graph_config=graph_config, simple_mode=False)
         await self.db.commit()
-        agent = await self.repo.get_by_id(agent_id)
+        # expire_on_commit=False means commit does NOT clear the session identity map.
+        # Refresh forces a SELECT to get the just-written graph_config instead of the
+        # stale pre-update values still sitting in the ORM cache.
+        await self.db.refresh(agent)
 
         log.info("agent_graph_updated", org_id=org_id, agent_id=agent_id)
         return _to_response(agent)

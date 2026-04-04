@@ -132,6 +132,7 @@ def _initial_state(session_id: str, agent_id: str, org_id: str) -> dict:
         "crm_record": None,
         "tool_calls": [],
         "transfer_to": None,
+        "whisper_message": None,
         "transfer_initiated": False,
         "start_time": now,
         "end_time": None,
@@ -145,9 +146,13 @@ def _initial_state(session_id: str, agent_id: str, org_id: str) -> dict:
     }
 
 
-def _turn_number(transcript: list[dict]) -> int:
-    """0-based turn index: number of complete user+agent exchanges so far."""
-    return len(transcript) // 2
+def _turn_number(session_meta: dict | None) -> int:
+    """0-based turn index read from session.meta['turn_count'] (persisted across send_message calls).
+
+    Replaces the old transcript-length heuristic which broke during collect_data
+    because the transcript doesn't grow until the node returns.
+    """
+    return (session_meta or {}).get("turn_count", 0)
 
 
 # ── Service ───────────────────────────────────────────────────────────────────
@@ -186,6 +191,11 @@ async def start_session(
 
     langsmith_url = _fetch_langsmith_url(capture.run_id) if capture.run_id else None
 
+    # turn_count=1 after start_session (turn 0 just ran)
+    _base_meta: dict = {"turn_count": 1}
+    if langsmith_url:
+        _base_meta["langsmith_url"] = langsmith_url
+
     if not session_ended:
         interrupt_info = await _get_interrupt_info(graph, base_config)
         if interrupt_info:
@@ -195,14 +205,14 @@ async def start_session(
             collector.add_interrupt(interrupt_info)
         await session_repo.update_transcript(
             session_id, transcript=all_messages, tool_calls=result.get("tool_calls", []),
-            meta={"langsmith_url": langsmith_url} if langsmith_url else None,
+            meta=_base_meta,
         )
     else:
         await session_repo.mark_ended(
             session_id,
             transcript=all_messages,
             tool_calls=result.get("tool_calls", []),
-            meta={"langsmith_url": langsmith_url} if langsmith_url else None,
+            meta=_base_meta,
         )
 
     await SessionEventRepository(db).bulk_insert(collector.finalize())
@@ -236,7 +246,7 @@ async def send_message(
     thread_id = make_thread_id(session.org_id, session_id)
     base_config = {"configurable": {"thread_id": thread_id}}
     capture = _RunIdCapture()
-    turn = _turn_number(session.transcript or [])
+    turn = _turn_number(session.meta)
     collector = TurnEventCollector(session_id, turn=turn, graph_config=agent.graph_config)
     config = _langsmith_config(base_config, session_id, session.agent_id, capture, extra_callbacks=[collector.as_callback_handler()])
 
@@ -250,6 +260,9 @@ async def send_message(
     new_msgs = _extract_new_agent_messages(all_messages, cursor)
 
     langsmith_url = _fetch_langsmith_url(capture.run_id) if capture.run_id else None
+    _send_meta: dict = {"turn_count": turn + 1}
+    if langsmith_url:
+        _send_meta["langsmith_url"] = langsmith_url
 
     if not session_ended:
         interrupt_info = await _get_interrupt_info(graph, base_config)
@@ -260,14 +273,14 @@ async def send_message(
             collector.add_interrupt(interrupt_info)
         await session_repo.update_transcript(
             session_id, transcript=all_messages, tool_calls=result.get("tool_calls", []),
-            meta={"langsmith_url": langsmith_url} if langsmith_url else None,
+            meta=_send_meta,
         )
     else:
         await session_repo.mark_ended(
             session_id,
             transcript=all_messages,
             tool_calls=result.get("tool_calls", []),
-            meta={"langsmith_url": langsmith_url} if langsmith_url else None,
+            meta=_send_meta,
         )
 
     await SessionEventRepository(db).bulk_insert(collector.finalize())
@@ -296,9 +309,12 @@ async def stream_message(
         token        — LLM text chunk (stream_mode="messages")
         node_start   — graph node began executing
         node_end     — graph node finished
+        node_message — agent message not streamed via tokens (node errors, farewell,
+                       transfer hold message); includes content + node_id
         human_review — graph paused waiting for approval
+        collect_question — collect_data asking for a field value
         ended        — turn complete; includes session_ended flag
-        error        — session not found / already ended
+        error        — session not found / already ended / unhandled exception
     """
     session_repo = SessionRepository(db)
     session = await session_repo.get(session_id)
@@ -317,12 +333,12 @@ async def stream_message(
     thread_id = make_thread_id(session.org_id, session_id)
     base_config = {"configurable": {"thread_id": thread_id}}
     capture = _RunIdCapture()
-    turn = _turn_number(session.transcript or [])
+    turn = _turn_number(session.meta)
     collector = TurnEventCollector(session_id, turn=turn, graph_config=agent.graph_config)
     config = _langsmith_config(base_config, session_id, session.agent_id, capture)
 
     # Node types whose LLM calls are internal (routing, review) — never stream their tokens
-    _INTERNAL_LLM_TYPES = {"condition", "human_review"}
+    _INTERNAL_LLM_TYPES = {"condition", "human_review", "collect_data"}
     _internal_node_ids = {
         node["id"]
         for node in (agent.graph_config.get("nodes", []) if agent.graph_config else [])
@@ -331,6 +347,11 @@ async def stream_message(
 
     # Nodes we don't want to surface as node_start/end events (LangGraph internals)
     _SKIP_NODES = {"LangGraph", "__start__", ""}
+
+    # Capture state snapshot before stream begins so we can detect new errors afterward.
+    # Errors are stored in state["error"] (not in messages) so voice/LLM never sees them.
+    state_before_stream = await graph.aget_state(base_config)
+    error_before = state_before_stream.values.get("error")
 
     try:
         async for event in graph.astream_events(
@@ -357,7 +378,9 @@ async def stream_message(
                 yield _sse("node_start", {"node": name})
 
             elif kind == "on_chain_end" and name not in _SKIP_NODES:
-                yield _sse("node_end", {"node": name})
+                output = event.get("data", {}).get("output")
+                node_error = output.get("error") if isinstance(output, dict) else None
+                yield _sse("node_end", {"node": name, "error": node_error})
 
     except Exception as exc:
         log.error("chat_stream_error", session_id=session_id, error=str(exc))
@@ -385,22 +408,31 @@ async def stream_message(
     session_ended: bool = state_values.get("session_ended", False)
     all_messages = state_values.get("messages", [])
 
+    # Surface any new node error to the debug panel via node_message SSE.
+    # Errors live in state["error"] — never in state["messages"] — so voice/TTS
+    # and the LLM conversation history are always clean.
+    new_error = state_values.get("error")
+    if new_error and new_error != error_before:
+        yield _sse("node_message", {"content": new_error, "is_error": True})
+
     langsmith_url = _fetch_langsmith_url(capture.run_id) if capture.run_id else None
-    meta = {"langsmith_url": langsmith_url} if langsmith_url else None
+    _stream_meta: dict = {"turn_count": turn + 1}
+    if langsmith_url:
+        _stream_meta["langsmith_url"] = langsmith_url
 
     if session_ended:
         await session_repo.mark_ended(
             session_id,
             transcript=all_messages,
             tool_calls=state_values.get("tool_calls", []),
-            meta=meta,
+            meta=_stream_meta,
         )
     else:
         await session_repo.update_transcript(
             session_id,
             transcript=all_messages,
             tool_calls=state_values.get("tool_calls", []),
-            meta=meta,
+            meta=_stream_meta,
         )
 
     await SessionEventRepository(db).bulk_insert(collector.finalize())

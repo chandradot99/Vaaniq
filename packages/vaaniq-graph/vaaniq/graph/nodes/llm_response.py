@@ -178,18 +178,28 @@ class LLMResponseNode(BaseNode):
     async def __call__(self, state: GraphSessionState) -> dict:
         from vaaniq.tools.registry import TOOL_REGISTRY  # deferred to avoid circular import
 
-        instructions: str = self.config.get("instructions", "You are a helpful assistant.")
+        global_system: str = state.get("system_message", "")
+        instructions: str = self.config.get("instructions", "")
         rag_enabled: bool = self.config.get("rag_enabled", False)
         tool_names: list[str] = self.config.get("tools", [])
 
         now_dt = datetime.now(timezone.utc)
         current_datetime_str = now_dt.strftime("%A, %B %d, %Y at %I:%M %p UTC")
-        system_parts = [
-            f"Current date and time: {current_datetime_str}",
-            instructions,
-        ]
+        system_parts = [f"Current date and time: {current_datetime_str}"]
+        if global_system:
+            system_parts.append(global_system)
+        if instructions:
+            system_parts.append(instructions)
+        if not global_system and not instructions:
+            system_parts.append("You are a helpful assistant.")
         if rag_enabled and state.get("rag_context"):
             system_parts.append(f"\n\nRelevant context from knowledge base:\n{state['rag_context']}")
+        if state.get("error"):
+            system_parts.append(
+                "\n\nIMPORTANT: A previous step in this turn failed to complete. "
+                "Do NOT tell the user the action succeeded. "
+                "Apologise briefly and let them know you were unable to complete their request."
+            )
         system = "\n".join(system_parts)
 
         llm = get_llm(self.config, self.org_keys)
@@ -205,18 +215,31 @@ class LLMResponseNode(BaseNode):
         )
         base_messages = [SystemMessage(content=system)] + lc_history
 
-        if not tool_names:
-            response = await llm.ainvoke(base_messages)
-            final_content: str = response.content
-            new_tool_calls: list = []
-        else:
-            lc_tools = [
-                _wrap_as_lc_tool(TOOL_REGISTRY[name], self.org_keys)
-                for name in tool_names
-                if name in TOOL_REGISTRY
-            ]
-            llm_with_tools = llm.bind_tools(lc_tools)
-            final_content, new_tool_calls = await _react_loop(llm_with_tools, list(base_messages), lc_tools)
+        try:
+            if not tool_names:
+                response = await llm.ainvoke(base_messages)
+                final_content: str = response.content
+                new_tool_calls: list = []
+            else:
+                missing = [n for n in tool_names if n not in TOOL_REGISTRY]
+                if missing:
+                    import structlog as _sl
+                    _sl.get_logger().warning(
+                        "llm_response_tools_not_found",
+                        missing=missing,
+                        session_id=state.get("session_id"),
+                    )
+                lc_tools = [
+                    _wrap_as_lc_tool(TOOL_REGISTRY[name], self.org_keys)
+                    for name in tool_names
+                    if name in TOOL_REGISTRY
+                ]
+                llm_with_tools = llm.bind_tools(lc_tools)
+                final_content, new_tool_calls = await _react_loop(llm_with_tools, list(base_messages), lc_tools)
+        except Exception as exc:
+            import structlog as _sl
+            _sl.get_logger().error("llm_response_error", error=str(exc), session_id=state.get("session_id"))
+            return {"error": str(exc), "current_node": "llm_response"}
 
         now = datetime.now(timezone.utc).isoformat()
         agent_msg: Message = {

@@ -11,12 +11,15 @@ Config:
     provider       (str)   optional — see llm.py
     model          (str)   optional — see llm.py
 """
+import structlog
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from vaaniq.graph.nodes.base import BaseNode
 from vaaniq.graph.nodes.llm import get_llm
 from vaaniq.graph.state import GraphSessionState
+
+log = structlog.get_logger()
 
 
 _SYSTEM_TEMPLATE = """\
@@ -56,9 +59,21 @@ class ConditionNode(BaseNode):
             )
             route = decision.route.strip().lower()
             if route not in valid_labels:
+                log.warning(
+                    "condition_invalid_route",
+                    returned=route,
+                    valid=valid_labels,
+                    fallback=valid_labels[0],
+                    session_id=state.get("session_id"),
+                )
                 route = valid_labels[0]
-        except Exception:
-            # Fallback: use first route rather than crashing the graph
+        except Exception as exc:
+            log.warning(
+                "condition_llm_error",
+                error=str(exc),
+                fallback=valid_labels[0],
+                session_id=state.get("session_id"),
+            )
             route = valid_labels[0]
 
         return {"route": route, "current_node": "condition"}

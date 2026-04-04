@@ -6,6 +6,7 @@ To add a new node type:
 2. Import it here and add it to NODE_REGISTRY
 3. Add the React Flow component in the frontend
 """
+from vaaniq.graph.nodes.start import StartNode
 from vaaniq.graph.nodes.collect_data import CollectDataNode
 from vaaniq.graph.nodes.condition import ConditionNode
 from vaaniq.graph.nodes.human_review import HumanReviewNode
@@ -20,6 +21,8 @@ from vaaniq.graph.nodes.set_variable import SetVariableNode
 from vaaniq.graph.nodes.transfer_human import TransferHumanNode
 
 NODE_REGISTRY: dict[str, type] = {
+    # Entry
+    "start":               StartNode,
     # Input
     "inbound_message":     InboundMessageNode,
     # Logic

@@ -13,20 +13,22 @@ Config:
     save_response_to  (str)   state key to store the JSON response (optional)
     timeout_seconds   (int)   request timeout, default 10
 
-On non-2xx response the node sets state["error"] and does not raise,
-so the graph can route to an error handler node if one is defined.
+On non-2xx response the node sets state["error"] and adds an agent message
+to state["messages"] so the error is visible in the chat/test panel.
 """
+import structlog
 import httpx
 
-from vaaniq.graph.nodes.base import BaseNode
+from vaaniq.graph.nodes.base import BaseNode, PROTECTED_STATE_KEYS
 from vaaniq.core.state import SessionState
 from vaaniq.graph.resolver import TemplateResolver
+
+log = structlog.get_logger()
 
 
 class HttpRequestNode(BaseNode):
     async def __call__(self, state: SessionState) -> dict:
         cfg = TemplateResolver.resolve(self.config, state, self.org_keys)
-
         method: str = cfg["method"].upper()
         url: str = cfg["url"]
         headers: dict = cfg.get("headers", {})
@@ -34,6 +36,12 @@ class HttpRequestNode(BaseNode):
         params: dict | None = cfg.get("params")
         timeout: int = int(cfg.get("timeout_seconds", 10))
         save_key: str | None = cfg.get("save_response_to")
+
+        # Guard against writing into protected system keys
+        if save_key and save_key in PROTECTED_STATE_KEYS:
+            error_msg = f"save_response_to: '{save_key}' is a protected state key and cannot be overwritten."
+            log.error("http_request_protected_key", key=save_key, url=url, session_id=state.get("session_id"))
+            return {"error": error_msg}
 
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
@@ -46,9 +54,13 @@ class HttpRequestNode(BaseNode):
                 )
                 response.raise_for_status()
         except httpx.HTTPStatusError as exc:
-            return {"error": f"HTTP {exc.response.status_code} from {url}: {exc.response.text[:200]}"}
+            error_msg = f"HTTP {exc.response.status_code} from {url}: {exc.response.text[:300]}"
+            log.warning("http_request_http_error", url=url, status=exc.response.status_code, session_id=state.get("session_id"))
+            return {"error": error_msg}
         except httpx.RequestError as exc:
-            return {"error": f"Request failed: {exc}"}
+            error_msg = f"Request to {url} failed: {exc}"
+            log.warning("http_request_error", url=url, error=str(exc), session_id=state.get("session_id"))
+            return {"error": error_msg}
 
         if save_key:
             try:

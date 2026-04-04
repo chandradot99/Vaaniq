@@ -43,6 +43,16 @@ class GraphBuilder:
         """
         workflow = StateGraph(GraphSessionState)
 
+        # Validate graph structure up-front for clear error messages
+        node_ids = {n["id"] for n in graph_config.get("nodes", [])}
+        entry = graph_config.get("entry_point")
+        if not entry:
+            raise ValueError("graph_config must have an 'entry_point'")
+        if entry not in node_ids:
+            raise ValueError(
+                f"entry_point {entry!r} does not match any node id. "
+                f"Available node ids: {sorted(node_ids)}"
+            )
         # Register nodes
         for node in graph_config.get("nodes", []):
             node_type = node["type"]
@@ -63,29 +73,30 @@ class GraphBuilder:
         for edge in graph_config.get("edges", []):
             source = edge["source"]
             target = edge["target"]
-            lc_target = END if target == "end" else target
+            # "end" is the legacy sentinel for LangGraph END — but only when no real
+            # node with that id exists. If the graph has an actual node named "end",
+            # route to it normally so it can execute (e.g. an end_session node).
+            lc_target = END if (target == "end" and "end" not in node_ids) else target
 
             if "condition" in edge:
                 conditional[source].append(edge)
             else:
                 workflow.add_edge(source, lc_target)
 
-        # Add conditional edges — condition node writes state["route"]
+        # Add conditional edges — condition node writes state["route"] (always lowercase)
+        # Mapping keys are lowercased to match: condition.py lowercases route labels before
+        # writing to state, so the lookup must use the same casing.
         for source, edges in conditional.items():
             mapping = {
-                e["condition"]: (END if e["target"] == "end" else e["target"])
+                e["condition"].lower(): (END if (e["target"] == "end" and "end" not in node_ids) else e["target"])
                 for e in edges
             }
             workflow.add_conditional_edges(
                 source,
-                lambda state: state.get("route"),
+                lambda state: (state.get("route") or "").lower(),
                 mapping,
             )
 
-        # Use START constant (preferred over set_entry_point)
-        entry = graph_config.get("entry_point")
-        if not entry:
-            raise ValueError("graph_config must have an 'entry_point'")
         workflow.add_edge(START, entry)
 
         return workflow.compile(checkpointer=checkpointer)

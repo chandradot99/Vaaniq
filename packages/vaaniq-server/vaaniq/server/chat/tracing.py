@@ -98,6 +98,9 @@ class TurnEventCollector:
         if kind == "on_chain_start":
             if name in _SKIP_NAMES:
                 return
+            # Skip internal LangGraph nodes that are not in the user's graph config
+            if self._node_type_map and name not in self._node_type_map:
+                return
             self._pending[run_id] = {
                 "event_type": "node",
                 "name": name,
@@ -113,13 +116,20 @@ class TurnEventCollector:
             pending = self._pending.pop(run_id, None)
             if pending:
                 ended = _now()
+                # Check if the node signalled a failure via its return dict.
+                # Nodes that error return {"error": "..."} instead of raising,
+                # so LangGraph still fires on_chain_end — we inspect the output
+                # here to mark the node as errored in the timeline.
+                output = event.get("data", {}).get("output")
+                node_error = output.get("error") if isinstance(output, dict) else None
                 self._emit(
                     event_type="node",
                     name=pending["name"],
                     started_at=pending["started_at"],
                     ended_at=ended,
-                    status="success",
+                    status="error" if node_error else "success",
                     data=pending["data"],
+                    error=node_error,
                 )
 
         elif kind == "on_chat_model_start":
@@ -301,7 +311,6 @@ class _CollectorCallbackHandler(BaseCallbackHandler):
         })
 
     def on_chain_end(self, outputs: dict, *, run_id: uuid.UUID, parent_run_id: uuid.UUID | None = None, **kwargs: Any) -> None:  # noqa: ARG002
-        # Reconstruct name from pending dict
         run_id_str = str(run_id)
         pending = self._c._pending.get(run_id_str, {})
         self._c.ingest({
@@ -309,6 +318,7 @@ class _CollectorCallbackHandler(BaseCallbackHandler):
             "name": pending.get("name", ""),
             "run_id": run_id_str,
             "metadata": {},
+            "data": {"output": outputs},  # pass output so ingest can detect node errors
         })
 
     def on_llm_start(self, serialized: dict, prompts: list, *, run_id: uuid.UUID, parent_run_id: uuid.UUID | None = None, **kwargs: Any) -> None:  # noqa: ARG002

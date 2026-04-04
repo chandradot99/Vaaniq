@@ -35,4 +35,5 @@ class InboundMessageNode(BaseNode):
         return {
             "messages": [user_msg],
             "current_node": "inbound_message",
+            "error": None,   # clear any error from the previous turn
         }

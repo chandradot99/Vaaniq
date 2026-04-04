@@ -31,6 +31,7 @@ class SessionState(TypedDict):
     tool_calls: list[ToolCall]
     route: Optional[str]
     transfer_to: Optional[str]
+    whisper_message: Optional[str]
     start_time: str
     end_time: Optional[str]
     duration_seconds: Optional[int]

@@ -16,6 +16,10 @@ Reducers:
   action_items operator.add  → nodes return [new_item], list is appended
   post_actions_completed operator.add
 
+  current_node  last_value     → lambda _a, b: b — last write wins
+  route         last_value     → lambda _a, b: b — last write wins
+  error         last_value     → lambda _a, b: b — last write wins
+
 All other fields have no reducer — nodes overwrite them directly.
 """
 import operator
@@ -43,14 +47,18 @@ class GraphSessionState(TypedDict):
     messages: Annotated[list[Message], operator.add]
 
     # ── Graph state ───────────────────────────────────────────────────────
-    current_node: str
-    route: Optional[str]
+    # last_value reducer: if multiple nodes update these scalars in the same
+    # superstep (fan-out / resumed interrupt), take the last write instead of
+    # raising INVALID_CONCURRENT_GRAPH_UPDATE.
+    current_node: Annotated[str, lambda _a, b: b]
+    route: Annotated[Optional[str], lambda _a, b: b]
 
     # ── Collected data ────────────────────────────────────────────────────
     # Reducer: merge — nodes return {"field": value}, dict is merged
     collected: Annotated[dict[str, Any], _dict_merge]
 
     # ── Context ───────────────────────────────────────────────────────────
+    system_message: str   # set by start node; injected into all llm_response nodes
     rag_context: str
     crm_record: Optional[dict[str, Any]]
 
@@ -60,6 +68,7 @@ class GraphSessionState(TypedDict):
 
     # ── Transfer ──────────────────────────────────────────────────────────
     transfer_to: Optional[str]
+    whisper_message: Optional[str]
     transfer_initiated: bool
 
     # ── Session lifecycle ─────────────────────────────────────────────────
@@ -75,4 +84,4 @@ class GraphSessionState(TypedDict):
     post_actions_completed: Annotated[list[str], operator.add]
 
     # ── Error handling ────────────────────────────────────────────────────
-    error: Optional[str]
+    error: Annotated[Optional[str], lambda _a, b: b]
