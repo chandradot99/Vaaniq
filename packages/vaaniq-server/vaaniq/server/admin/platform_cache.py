@@ -36,4 +36,15 @@ async def reload(db: AsyncSession) -> None:
             creds = {}
         _cache[pc.provider] = {**(pc.config or {}), **creds}
 
+    # Push LangSmith config from DB to os.environ so LangChain picks it up.
+    # DB config takes precedence over .env values set earlier in setup_observability().
+    langsmith = _cache.get("langsmith")
+    if langsmith and langsmith.get("api_key"):
+        import os
+        os.environ["LANGSMITH_API_KEY"] = langsmith["api_key"]
+        os.environ["LANGSMITH_TRACING"] = "true"
+        os.environ["LANGSMITH_PROJECT"] = langsmith.get("project", "vaaniq")
+        os.environ["LANGSMITH_ENDPOINT"] = langsmith.get("endpoint", "https://api.smith.langchain.com")
+        log.info("langsmith_configured_from_db", project=langsmith.get("project", "vaaniq"))
+
     log.info("platform_cache_reloaded", providers=list(_cache.keys()))

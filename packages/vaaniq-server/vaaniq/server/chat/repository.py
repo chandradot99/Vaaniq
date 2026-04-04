@@ -7,7 +7,7 @@ transcript snapshot, and post-session analytics written when a session ends.
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vaaniq.server.models.session import Session
@@ -43,6 +43,22 @@ class SessionRepository:
         result = await self.db.execute(select(Session).where(Session.id == session_id))
         return result.scalar_one_or_none()
 
+    async def update_transcript(
+        self,
+        session_id: str,
+        transcript: list,
+        tool_calls: list,
+        meta: dict | None = None,
+    ) -> None:
+        """Write transcript + tool_calls after every turn so the Sessions tab is always fresh."""
+        session = await self.get(session_id)
+        if not session:
+            return
+        session.transcript = transcript
+        session.tool_calls = tool_calls
+        if meta:
+            session.meta = {**(session.meta or {}), **meta}
+
     async def mark_ended(
         self,
         session_id: str,
@@ -51,6 +67,7 @@ class SessionRepository:
         duration_seconds: int | None = None,
         sentiment: str | None = None,
         summary: str | None = None,
+        meta: dict | None = None,
     ) -> None:
         session = await self.get(session_id)
         if not session:
@@ -67,3 +84,25 @@ class SessionRepository:
             session.sentiment = sentiment
         if summary is not None:
             session.summary = summary
+        if meta:
+            session.meta = {**(session.meta or {}), **meta}
+
+    async def list_by_agent(
+        self,
+        agent_id: str,
+        org_id: str,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[Session], int]:
+        base = select(Session).where(
+            Session.agent_id == agent_id,
+            Session.org_id == org_id,
+        )
+        total_result = await self.db.execute(
+            select(func.count()).select_from(base.subquery())
+        )
+        total = total_result.scalar_one()
+        result = await self.db.execute(
+            base.order_by(Session.created_at.desc()).limit(limit).offset(offset)
+        )
+        return list(result.scalars().all()), total

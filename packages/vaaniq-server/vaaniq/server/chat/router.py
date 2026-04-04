@@ -7,7 +7,21 @@ from vaaniq.server.auth.dependencies import get_current_user, CurrentUser
 from vaaniq.server.agents.dependencies import valid_agent
 from vaaniq.server.agents.models import Agent
 from vaaniq.server.chat import service
-from vaaniq.server.chat.schemas import StartChatResponse, SendMessageRequest, SendMessageResponse
+from vaaniq.server.chat.repository import SessionRepository
+from vaaniq.server.chat.exceptions import ChatSessionNotFound
+from vaaniq.server.chat.schemas import (
+    StartChatResponse,
+    SendMessageRequest,
+    SendMessageResponse,
+    SessionListResponse,
+    SessionDetail,
+    SessionSummary,
+    ToolCallDetail,
+    TranscriptMessage,
+    SessionTimeline,
+    SessionEventSchema,
+)
+from vaaniq.server.chat.tracing import SessionEventRepository
 
 router = APIRouter(prefix="/v1/chat", tags=["chat"])
 
@@ -28,6 +42,106 @@ async def send_message(
     db: AsyncSession = Depends(get_db),
 ) -> SendMessageResponse:
     return await service.send_message(body.session_id, body.message, db)
+
+
+@router.get("/agents/{agent_id}/sessions", response_model=SessionListResponse)
+async def list_sessions(
+    agent_id: str,
+    limit: int = 20,
+    offset: int = 0,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> SessionListResponse:
+    sessions, total = await SessionRepository(db).list_by_agent(
+        agent_id=agent_id,
+        org_id=current.org_id,
+        limit=min(limit, 50),
+        offset=offset,
+    )
+    summaries = [
+        SessionSummary(
+            id=s.id,
+            agent_id=s.agent_id,
+            status=s.status,
+            channel=s.channel,
+            message_count=len(s.transcript or []),
+            tool_call_count=len(s.tool_calls or []),
+            duration_seconds=s.duration_seconds,
+            sentiment=s.sentiment,
+            created_at=s.created_at,
+            ended_at=s.ended_at,
+        )
+        for s in sessions
+    ]
+    return SessionListResponse(sessions=summaries, total=total)
+
+
+@router.get("/sessions/{session_id}", response_model=SessionDetail)
+async def get_session(
+    session_id: str,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> SessionDetail:
+    session = await SessionRepository(db).get(session_id)
+    if not session or session.org_id != current.org_id:
+        raise ChatSessionNotFound()
+    return SessionDetail(
+        id=session.id,
+        agent_id=session.agent_id,
+        status=session.status,
+        channel=session.channel,
+        duration_seconds=session.duration_seconds,
+        sentiment=session.sentiment,
+        summary=session.summary,
+        meta=session.meta or {},
+        transcript=[TranscriptMessage(**m) for m in (session.transcript or [])],
+        tool_calls=[ToolCallDetail(**tc) for tc in (session.tool_calls or [])],
+        created_at=session.created_at,
+        ended_at=session.ended_at,
+    )
+
+
+@router.get("/sessions/{session_id}/events", response_model=SessionTimeline)
+async def get_session_events(
+    session_id: str,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> SessionTimeline:
+    """Return the full execution timeline for a session."""
+    session = await SessionRepository(db).get(session_id)
+    if not session or session.org_id != current.org_id:
+        raise ChatSessionNotFound()
+    events = await SessionEventRepository(db).list_by_session(session_id)
+    event_schemas = [
+        SessionEventSchema(
+            id=e.id,
+            turn=e.turn,
+            seq=e.seq,
+            event_type=e.event_type,
+            name=e.name,
+            started_at=e.started_at,
+            ended_at=e.ended_at,
+            duration_ms=e.duration_ms,
+            status=e.status,
+            data=e.data or {},
+            error=e.error,
+        )
+        for e in events
+    ]
+    turns = {e.turn for e in events}
+    total_llm_tokens = sum(
+        (e.data or {}).get("total_tokens", 0)
+        for e in events
+        if e.event_type == "llm"
+    )
+    total_duration_ms = sum(e.duration_ms or 0 for e in events if e.event_type == "node")
+    return SessionTimeline(
+        session_id=session_id,
+        events=event_schemas,
+        total_turns=len(turns),
+        total_llm_tokens=total_llm_tokens,
+        total_duration_ms=total_duration_ms,
+    )
 
 
 @router.post("/stream")

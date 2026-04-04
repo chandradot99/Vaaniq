@@ -15,10 +15,13 @@ Interrupt types surfaced to the frontend:
   {"type": "human_review", "message": "…", ...}   — human_review node waiting for approval
 """
 import json
+import os
 import structlog
 from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
+from uuid import UUID
 
+from langchain_core.callbacks.base import BaseCallbackHandler
 from langgraph.types import Command
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,8 +31,53 @@ from vaaniq.server.chat.checkpointer import get_checkpointer, make_thread_id
 from vaaniq.server.chat.exceptions import ChatSessionNotFound, ChatSessionEnded
 from vaaniq.server.chat.repository import SessionRepository
 from vaaniq.server.chat.schemas import ChatMessage, StartChatResponse, SendMessageResponse
+from vaaniq.server.chat.tracing import TurnEventCollector, SessionEventRepository
 
 log = structlog.get_logger()
+
+
+# ── LangSmith run capture ─────────────────────────────────────────────────────
+
+
+def _langsmith_enabled() -> bool:
+    return bool(os.environ.get("LANGSMITH_API_KEY"))
+
+
+class _RunIdCapture(BaseCallbackHandler):
+    """Captures the root LangGraph run ID for LangSmith URL lookup."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.run_id: str | None = None
+
+    def on_chain_start(self, serialized: dict, inputs: dict, *, run_id: UUID, parent_run_id: UUID | None = None, **kwargs) -> None:  # noqa: ARG002
+        if parent_run_id is None:
+            self.run_id = str(run_id)
+
+
+def _fetch_langsmith_url(run_id: str) -> str | None:
+    """Return the LangSmith URL for a run ID. Returns None on any failure."""
+    try:
+        from langsmith import Client
+        run = Client().read_run(UUID(run_id))
+        return run.url
+    except Exception:
+        return None
+
+
+def _langsmith_config(base_config: dict, session_id: str, agent_id: str, capture: _RunIdCapture, extra_callbacks: list | None = None) -> dict:
+    """Augment a LangGraph config with LangSmith tags and the run capture callback."""
+    extra: dict = {
+        "run_name": f"session:{session_id[:8]}",
+        "tags": [f"session_id:{session_id}", f"agent_id:{agent_id}"],
+        "metadata": {"session_id": session_id, "agent_id": agent_id},
+    }
+    callbacks: list = extra_callbacks or []
+    if _langsmith_enabled():
+        callbacks = [capture] + callbacks
+    if callbacks:
+        extra["callbacks"] = callbacks
+    return {**base_config, **extra}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -64,8 +112,6 @@ def _make_interrupt_message(interrupt_info: dict) -> ChatMessage | None:
     if itype == "collect_question":
         return ChatMessage(role="agent", content=interrupt_info.get("content", ""))
     if itype == "human_review":
-        # Serialise into a JSON string so the frontend can detect and render Approve/Reject
-        import json
         return ChatMessage(role="agent", content=json.dumps(interrupt_info))
     return None
 
@@ -99,6 +145,11 @@ def _initial_state(session_id: str, agent_id: str, org_id: str) -> dict:
     }
 
 
+def _turn_number(transcript: list[dict]) -> int:
+    """0-based turn index: number of complete user+agent exchanges so far."""
+    return len(transcript) // 2
+
+
 # ── Service ───────────────────────────────────────────────────────────────────
 
 
@@ -122,28 +173,39 @@ async def start_session(
     session_id = session.id
 
     thread_id = make_thread_id(org_id, session_id)
-    config = {"configurable": {"thread_id": thread_id}}
+    base_config = {"configurable": {"thread_id": thread_id}}
+    capture = _RunIdCapture()
+    collector = TurnEventCollector(session_id, turn=0, graph_config=agent.graph_config)
+    config = _langsmith_config(base_config, session_id, agent_id, capture, extra_callbacks=[collector.as_callback_handler()])
 
     result = await graph.ainvoke(_initial_state(session_id, agent_id, org_id), config=config)
 
     session_ended: bool = result.get("session_ended", False)
-
     all_messages: list[dict] = result.get("messages", [])
     new_msgs = _extract_new_agent_messages(all_messages, 0)
 
+    langsmith_url = _fetch_langsmith_url(capture.run_id) if capture.run_id else None
+
     if not session_ended:
-        interrupt_info = await _get_interrupt_info(graph, config)
+        interrupt_info = await _get_interrupt_info(graph, base_config)
         if interrupt_info:
             msg = _make_interrupt_message(interrupt_info)
             if msg:
                 new_msgs.append(msg)
+            collector.add_interrupt(interrupt_info)
+        await session_repo.update_transcript(
+            session_id, transcript=all_messages, tool_calls=result.get("tool_calls", []),
+            meta={"langsmith_url": langsmith_url} if langsmith_url else None,
+        )
     else:
         await session_repo.mark_ended(
             session_id,
             transcript=all_messages,
             tool_calls=result.get("tool_calls", []),
+            meta={"langsmith_url": langsmith_url} if langsmith_url else None,
         )
 
+    await SessionEventRepository(db).bulk_insert(collector.finalize())
     await db.commit()
     log.info("chat_session_started", session_id=session_id, agent_id=agent_id, org_id=org_id)
 
@@ -172,9 +234,13 @@ async def send_message(
     graph = await GraphBuilder().build(agent.graph_config, org_keys, checkpointer)
 
     thread_id = make_thread_id(session.org_id, session_id)
-    config = {"configurable": {"thread_id": thread_id}}
+    base_config = {"configurable": {"thread_id": thread_id}}
+    capture = _RunIdCapture()
+    turn = _turn_number(session.transcript or [])
+    collector = TurnEventCollector(session_id, turn=turn, graph_config=agent.graph_config)
+    config = _langsmith_config(base_config, session_id, session.agent_id, capture, extra_callbacks=[collector.as_callback_handler()])
 
-    state_before = await graph.aget_state(config)
+    state_before = await graph.aget_state(base_config)
     cursor = len(state_before.values.get("messages", []))
 
     result = await graph.ainvoke(Command(resume=user_message), config=config)
@@ -183,19 +249,28 @@ async def send_message(
     all_messages: list[dict] = result.get("messages", [])
     new_msgs = _extract_new_agent_messages(all_messages, cursor)
 
+    langsmith_url = _fetch_langsmith_url(capture.run_id) if capture.run_id else None
+
     if not session_ended:
-        interrupt_info = await _get_interrupt_info(graph, config)
+        interrupt_info = await _get_interrupt_info(graph, base_config)
         if interrupt_info:
             msg = _make_interrupt_message(interrupt_info)
             if msg:
                 new_msgs.append(msg)
+            collector.add_interrupt(interrupt_info)
+        await session_repo.update_transcript(
+            session_id, transcript=all_messages, tool_calls=result.get("tool_calls", []),
+            meta={"langsmith_url": langsmith_url} if langsmith_url else None,
+        )
     else:
         await session_repo.mark_ended(
             session_id,
             transcript=all_messages,
             tool_calls=result.get("tool_calls", []),
+            meta={"langsmith_url": langsmith_url} if langsmith_url else None,
         )
 
+    await SessionEventRepository(db).bulk_insert(collector.finalize())
     await db.commit()
     log.info("chat_message_processed", session_id=session_id, session_ended=session_ended)
 
@@ -240,7 +315,11 @@ async def stream_message(
     graph = await GraphBuilder().build(agent.graph_config, org_keys, checkpointer)
 
     thread_id = make_thread_id(session.org_id, session_id)
-    config = {"configurable": {"thread_id": thread_id}}
+    base_config = {"configurable": {"thread_id": thread_id}}
+    capture = _RunIdCapture()
+    turn = _turn_number(session.transcript or [])
+    collector = TurnEventCollector(session_id, turn=turn, graph_config=agent.graph_config)
+    config = _langsmith_config(base_config, session_id, session.agent_id, capture)
 
     # Node types whose LLM calls are internal (routing, review) — never stream their tokens
     _INTERNAL_LLM_TYPES = {"condition", "human_review"}
@@ -262,6 +341,9 @@ async def stream_message(
             kind: str = event["event"]
             name: str = event.get("name", "")
 
+            # Feed every event into the collector (pure in-memory, no I/O)
+            collector.ingest(event)
+
             if kind == "on_chat_model_stream":
                 # Skip tokens from internal routing/review nodes
                 langgraph_node = event.get("metadata", {}).get("langgraph_node", "")
@@ -279,11 +361,14 @@ async def stream_message(
 
     except Exception as exc:
         log.error("chat_stream_error", session_id=session_id, error=str(exc))
+        collector.add_error(exc)
+        await SessionEventRepository(db).bulk_insert(collector.finalize())
+        await db.commit()
         yield _sse("error", {"message": "An error occurred during processing"})
         return
 
     # After stream ends, inspect state for interrupts (human_review, collect_data)
-    state_after = await graph.aget_state(config)
+    state_after = await graph.aget_state(base_config)
     interrupt_info: dict | None = None
     for task in (state_after.tasks or []):
         for intr in (getattr(task, "interrupts", None) or []):
@@ -292,20 +377,34 @@ async def stream_message(
                 break
 
     if interrupt_info:
+        collector.add_interrupt(interrupt_info)
         itype = interrupt_info.get("type", "interrupt")
         yield _sse(itype, interrupt_info)
 
     state_values = state_after.values or {}
     session_ended: bool = state_values.get("session_ended", False)
+    all_messages = state_values.get("messages", [])
+
+    langsmith_url = _fetch_langsmith_url(capture.run_id) if capture.run_id else None
+    meta = {"langsmith_url": langsmith_url} if langsmith_url else None
 
     if session_ended:
-        all_messages = state_values.get("messages", [])
         await session_repo.mark_ended(
             session_id,
             transcript=all_messages,
             tool_calls=state_values.get("tool_calls", []),
+            meta=meta,
         )
-        await db.commit()
+    else:
+        await session_repo.update_transcript(
+            session_id,
+            transcript=all_messages,
+            tool_calls=state_values.get("tool_calls", []),
+            meta=meta,
+        )
+
+    await SessionEventRepository(db).bulk_insert(collector.finalize())
+    await db.commit()
 
     yield _sse("ended", {"session_ended": session_ended})
     log.info("chat_stream_complete", session_id=session_id, session_ended=session_ended)
