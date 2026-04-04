@@ -31,6 +31,111 @@ from vaaniq.server.agents.models import Agent
 
 AGENTS = [
     # ------------------------------------------------------------------
+    # Calendar Assistant (ReAct) — single LLM node, LLM decides everything
+    # ------------------------------------------------------------------
+    {
+        "name": "Calendar Assistant",
+        "language": "en",
+        "simple_mode": False,
+        "system_prompt": (
+            "You are a helpful assistant that manages Google Calendar. "
+            "Use your tools to check and create events. "
+            "Ask clarifying questions naturally when you need more information."
+        ),
+        "graph_config": {
+            "entry_point": "greet",
+            "guards": [],
+            "groups": [],
+            "nodes": [
+                {
+                    "id": "greet",
+                    "type": "llm_response",
+                    "label": "Greet",
+                    "position": {"x": 80, "y": 200},
+                    "config": {
+                        "instructions": (
+                            "Greet the user and let them know you can help them check "
+                            "or create Google Calendar events. Ask how you can help."
+                        ),
+                        "rag_enabled": False,
+                        "tools": [],
+                    },
+                },
+                {
+                    "id": "wait",
+                    "type": "inbound_message",
+                    "label": "Wait",
+                    "position": {"x": 280, "y": 200},
+                    "config": {},
+                },
+                {
+                    "id": "agent",
+                    "type": "llm_response",
+                    "label": "Agent",
+                    "position": {"x": 480, "y": 200},
+                    "config": {
+                        "instructions": (
+                            "Help the user manage their Google Calendar.\n\n"
+                            "- To check events: call google_calendar_list_events\n"
+                            "- To create an event: ask the user for the name, date, and time "
+                            "if not already provided, then call google_calendar_create_event\n"
+                            "- Answer follow-up questions conversationally\n\n"
+                            "When the user says goodbye or there's nothing more to do, "
+                            "say a warm farewell."
+                        ),
+                        "rag_enabled": False,
+                        "tools": [
+                            "google_calendar_list_events",
+                            "google_calendar_create_event",
+                        ],
+                    },
+                },
+                {
+                    "id": "route",
+                    "type": "condition",
+                    "label": "Done?",
+                    "position": {"x": 680, "y": 200},
+                    "config": {
+                        "router_prompt": (
+                            "Did the agent just say goodbye or indicate the conversation is over?\n"
+                            "- done: agent said farewell / session is ending\n"
+                            "- continue: conversation is still going"
+                        ),
+                        "routes": [
+                            {"label": "done",     "description": "Agent said goodbye"},
+                            {"label": "continue", "description": "Conversation still going"},
+                        ],
+                    },
+                },
+                {
+                    "id": "next_turn",
+                    "type": "inbound_message",
+                    "label": "Next Turn",
+                    "position": {"x": 880, "y": 160},
+                    "config": {},
+                },
+                {
+                    "id": "end",
+                    "type": "end_session",
+                    "label": "End",
+                    "position": {"x": 880, "y": 260},
+                    "config": {
+                        "farewell_message": "Goodbye! Have a great day!",
+                    },
+                },
+            ],
+            "edges": [
+                {"id": "e1", "source": "greet",     "target": "wait"},
+                {"id": "e2", "source": "wait",      "target": "agent"},
+                {"id": "e3", "source": "agent",     "target": "route"},
+                {"id": "e4", "source": "route",     "target": "next_turn", "condition": "continue"},
+                {"id": "e5", "source": "route",     "target": "end",       "condition": "done"},
+                {"id": "e6", "source": "next_turn", "target": "agent",     "goto": True},
+            ],
+        },
+    },
+
+    # ------------------------------------------------------------------
     # Smart Assistant — tests all node types + groups + goto edges
     # ------------------------------------------------------------------
     {
@@ -42,7 +147,7 @@ AGENTS = [
             "You can check upcoming events and create new ones."
         ),
         "graph_config": {
-            "entry_point": "start",
+            "entry_point": "greet",
             "guards": [],
 
             # ── Groups (swimlanes) ─────────────────────────────────────
@@ -52,7 +157,7 @@ AGENTS = [
                     "label": "Conversation Loop",
                     "color_index": 1,          # Blue
                     "position": {"x": 40, "y": 40},
-                    "width": 600,
+                    "width": 780,
                     "height": 220,
                 },
                 {
@@ -60,7 +165,7 @@ AGENTS = [
                     "label": "Create Event Flow",
                     "color_index": 3,          # Green
                     "position": {"x": 40, "y": 340},
-                    "width": 860,
+                    "width": 1040,
                     "height": 220,
                 },
             ],
@@ -69,11 +174,27 @@ AGENTS = [
             "nodes": [
                 # ── Conversation Loop ──────────────────────────────────
                 {
-                    "id": "start",
-                    "type": "inbound_message",
-                    "label": "Start",
+                    "id": "greet",
+                    "type": "llm_response",
+                    "label": "Greet",
                     "parent_id": "group_conversation",
                     "position": {"x": 40, "y": 100},   # relative to group
+                    "config": {
+                        "instructions": (
+                            "Greet the user warmly and let them know you can help them "
+                            "manage their Google Calendar — checking upcoming events or "
+                            "creating new ones. Ask how you can help."
+                        ),
+                        "rag_enabled": False,
+                        "tools": [],
+                    },
+                },
+                {
+                    "id": "wait",
+                    "type": "inbound_message",
+                    "label": "Wait",
+                    "parent_id": "group_conversation",
+                    "position": {"x": 220, "y": 100},  # relative to group
                     "config": {},
                 },
                 {
@@ -81,7 +202,7 @@ AGENTS = [
                     "type": "llm_response",
                     "label": "Agent",
                     "parent_id": "group_conversation",
-                    "position": {"x": 220, "y": 100},  # relative to group
+                    "position": {"x": 400, "y": 100},  # relative to group
                     "config": {
                         "instructions": (
                             "You are a helpful assistant that manages Google Calendar.\n\n"
@@ -97,23 +218,22 @@ AGENTS = [
                         "tools": ["google_calendar_list_events"],
                     },
                 },
-                # next_turn is only reached via the "continue" route — it waits
-                # for the user's next message then loops back to the agent.
+                # next_turn waits for the user's next message then loops back to agent.
                 {
                     "id": "next_turn",
                     "type": "inbound_message",
                     "label": "Next Turn",
                     "parent_id": "group_conversation",
-                    "position": {"x": 420, "y": 100},  # relative to group
+                    "position": {"x": 580, "y": 100},  # relative to group
                     "config": {},
                 },
 
-                # ── Routing — evaluates AFTER the agent responds ───────
+                # ── Routing — evaluated after the agent responds ───────
                 {
                     "id": "route_intent",
                     "type": "condition",
                     "label": "Route Intent",
-                    "position": {"x": 700, "y": 140},
+                    "position": {"x": 900, "y": 140},
                     "config": {
                         "router_prompt": (
                             "Based on the agent's last response and the conversation so far, "
@@ -185,7 +305,21 @@ AGENTS = [
                             "summary":    "{{collected.event_name}}",
                             "start_time": "{{collected.event_date}} {{collected.event_time}}",
                         },
-                        "save_response_to": "created_event",
+                    },
+                },
+                {
+                    "id": "confirm_event",
+                    "type": "llm_response",
+                    "label": "Confirm Event",
+                    "parent_id": "group_create_event",
+                    "position": {"x": 760, "y": 60},   # relative to group — after create
+                    "config": {
+                        "instructions": (
+                            "Tell the user their calendar event was created successfully. "
+                            "Mention the event name. Ask if there's anything else you can help with."
+                        ),
+                        "rag_enabled": False,
+                        "tools": [],
                     },
                 },
                 {
@@ -209,7 +343,7 @@ AGENTS = [
                     "id": "end",
                     "type": "end_session",
                     "label": "End",
-                    "position": {"x": 960, "y": 140},
+                    "position": {"x": 1160, "y": 140},
                     "config": {
                         "farewell_message": "Goodbye! Have a great day!",
                     },
@@ -218,26 +352,30 @@ AGENTS = [
 
             # ── Edges ──────────────────────────────────────────────────
             "edges": [
-                # Conversation loop — agent responds, THEN we route
-                {"id": "e1", "source": "start",          "target": "agent"},
-                {"id": "e2", "source": "agent",          "target": "route_intent"},
+                # Greeting then wait for first user message
+                {"id": "e1", "source": "greet",          "target": "wait"},
+                {"id": "e2", "source": "wait",           "target": "agent"},
 
-                # Route intent (evaluated after agent responds)
-                {"id": "e3", "source": "route_intent",   "target": "next_turn",      "condition": "continue"},
-                {"id": "e4", "source": "route_intent",   "target": "collect_event",  "condition": "create_event"},
-                {"id": "e5", "source": "route_intent",   "target": "end",            "condition": "done"},
+                # Agent responds, then route
+                {"id": "e3", "source": "agent",          "target": "route_intent"},
+
+                # Route intent
+                {"id": "e4", "source": "route_intent",   "target": "next_turn",      "condition": "continue"},
+                {"id": "e5", "source": "route_intent",   "target": "collect_event",  "condition": "create_event"},
+                {"id": "e6", "source": "route_intent",   "target": "end",            "condition": "done"},
 
                 # "continue" path — capture next user message then loop back to agent
-                {"id": "e6", "source": "next_turn",      "target": "agent",          "goto": True},
+                {"id": "e7", "source": "next_turn",      "target": "agent",          "goto": True},
 
                 # Create event flow
-                {"id": "e7", "source": "collect_event",  "target": "approve_event"},
-                {"id": "e8", "source": "approve_event",  "target": "create_event",   "condition": "approve"},
-                {"id": "e9", "source": "approve_event",  "target": "event_cancelled","condition": "reject"},
+                {"id": "e8",  "source": "collect_event",  "target": "approve_event"},
+                {"id": "e9",  "source": "approve_event",  "target": "create_event",   "condition": "approve"},
+                {"id": "e10", "source": "approve_event",  "target": "event_cancelled","condition": "reject"},
 
-                # After create event flow, return to conversation loop
-                {"id": "e10", "source": "create_event",    "target": "next_turn",    "goto": True},
-                {"id": "e11", "source": "event_cancelled", "target": "next_turn",    "goto": True},
+                # Confirm creation then return to conversation loop
+                {"id": "e11", "source": "create_event",    "target": "confirm_event"},
+                {"id": "e12", "source": "confirm_event",   "target": "next_turn",    "goto": True},
+                {"id": "e13", "source": "event_cancelled", "target": "next_turn",    "goto": True},
             ],
         },
     },

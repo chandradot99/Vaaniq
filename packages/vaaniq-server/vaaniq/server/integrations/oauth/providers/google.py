@@ -25,6 +25,7 @@ import httpx
 from google_auth_oauthlib.flow import Flow
 
 from vaaniq.server.core.config import settings
+from vaaniq.server.admin.platform_cache import get_provider_config
 from vaaniq.server.integrations.oauth.base import OAuthProvider
 
 _SCOPES = [
@@ -44,25 +45,39 @@ class GoogleOAuthProvider(OAuthProvider):
     def provider_name(self) -> str:
         return "google"
 
+    def _google_config(self) -> dict:
+        """Return Google OAuth credentials from platform_cache (DB) or env vars fallback."""
+        cached = get_provider_config("google")
+        if cached and cached.get("client_id") and cached.get("client_secret"):
+            return cached
+        return {
+            "client_id": settings.google_oauth_client_id,
+            "client_secret": settings.google_oauth_client_secret,
+            "redirect_uri": settings.google_oauth_redirect_uri,
+        }
+
     def is_configured(self) -> bool:
-        return bool(settings.google_oauth_client_id and settings.google_oauth_client_secret)
+        cfg = self._google_config()
+        return bool(cfg.get("client_id") and cfg.get("client_secret"))
 
     def _client_config(self) -> dict:
+        cfg = self._google_config()
         return {
             "web": {
-                "client_id": settings.google_oauth_client_id,
-                "client_secret": settings.google_oauth_client_secret,
-                "redirect_uris": [settings.google_oauth_redirect_uri],
+                "client_id": cfg["client_id"],
+                "client_secret": cfg["client_secret"],
+                "redirect_uris": [cfg.get("redirect_uri", settings.google_oauth_redirect_uri)],
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
             }
         }
 
     def get_auth_url(self, state: str, code_challenge: str = "") -> str:
+        redirect_uri = self._google_config().get("redirect_uri", settings.google_oauth_redirect_uri)
         flow = Flow.from_client_config(
             self._client_config(),
             scopes=_SCOPES,
-            redirect_uri=settings.google_oauth_redirect_uri,
+            redirect_uri=redirect_uri,
         )
         auth_url, _ = flow.authorization_url(
             access_type="offline",
@@ -76,16 +91,18 @@ class GoogleOAuthProvider(OAuthProvider):
 
     async def exchange_code(self, code: str, code_verifier: str = "") -> dict:
         def _fetch() -> dict:
+            cfg = self._google_config()
+            redirect_uri = cfg.get("redirect_uri", settings.google_oauth_redirect_uri)
             flow = Flow.from_client_config(
                 self._client_config(),
                 scopes=_SCOPES,
-                redirect_uri=settings.google_oauth_redirect_uri,
+                redirect_uri=redirect_uri,
             )
             flow.fetch_token(code=code, code_verifier=code_verifier)
             creds = flow.credentials
             return {
-                "client_id": settings.google_oauth_client_id,
-                "client_secret": settings.google_oauth_client_secret,
+                "client_id": cfg["client_id"],
+                "client_secret": cfg["client_secret"],
                 "access_token": creds.token,
                 "refresh_token": creds.refresh_token,
                 "token_uri": "https://oauth2.googleapis.com/token",

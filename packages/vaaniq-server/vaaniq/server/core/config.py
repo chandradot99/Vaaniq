@@ -34,6 +34,13 @@ class Settings(BaseSettings):
     # slack_oauth_client_id: str = ""
     # slack_oauth_client_secret: str = ""
 
+    # ── LangSmith tracing ─────────────────────────────────────────────────────
+    # LangChain reads these from os.environ — setup_observability() pushes them there.
+    langsmith_api_key: Optional[str] = None
+    langsmith_tracing: str = "false"
+    langsmith_endpoint: str = "https://api.smith.langchain.com"
+    langsmith_project: str = "vaaniq"
+
     @property
     def allowed_origins_list(self) -> list[str]:
         return [o.strip() for o in self.allowed_origins.split(",")]

@@ -27,9 +27,9 @@ class Session(Base):
     id = Column(String, primary_key=True)
     org_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
     agent_id = Column(String, ForeignKey("agents.id"), nullable=False, index=True)
-    channel = Column(Enum(ChannelEnum), nullable=False, default=ChannelEnum.chat)
+    channel = Column(Enum(ChannelEnum, native_enum=False), nullable=False, default=ChannelEnum.chat)
     user_id = Column(String, nullable=False, default="")
-    status = Column(Enum(SessionStatus), nullable=False, default=SessionStatus.active)
+    status = Column(Enum(SessionStatus, native_enum=False), nullable=False, default=SessionStatus.active)
 
     # Conversation data
     transcript = Column(JSONB, nullable=False, default=list)   # list of Message dicts

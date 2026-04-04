@@ -10,13 +10,18 @@ from vaaniq.server.agents.router import router as agents_router
 from vaaniq.server.integrations.router import router as integrations_router
 from vaaniq.server.tools.router import router as tools_router
 from vaaniq.server.chat.router import router as chat_router
+from vaaniq.server.admin.router import router as admin_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_observability()
     from vaaniq.server.chat.checkpointer import setup_checkpointer
+    from vaaniq.server.core.database import async_session_factory
+    from vaaniq.server.admin.platform_cache import reload as reload_platform_cache
     await setup_checkpointer()
+    async with async_session_factory() as db:
+        await reload_platform_cache(db)
     yield
 
 
@@ -37,6 +42,7 @@ app.include_router(agents_router)
 app.include_router(integrations_router)
 app.include_router(tools_router)
 app.include_router(chat_router)
+app.include_router(admin_router)
 
 
 @app.get("/health")

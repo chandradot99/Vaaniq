@@ -182,7 +182,12 @@ class LLMResponseNode(BaseNode):
         rag_enabled: bool = self.config.get("rag_enabled", False)
         tool_names: list[str] = self.config.get("tools", [])
 
-        system_parts = [instructions]
+        now_dt = datetime.now(timezone.utc)
+        current_datetime_str = now_dt.strftime("%A, %B %d, %Y at %I:%M %p UTC")
+        system_parts = [
+            f"Current date and time: {current_datetime_str}",
+            instructions,
+        ]
         if rag_enabled and state.get("rag_context"):
             system_parts.append(f"\n\nRelevant context from knowledge base:\n{state['rag_context']}")
         system = "\n".join(system_parts)

@@ -118,12 +118,17 @@ class GoogleCalendarCreateEvent(BaseTool):
             "attendees": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "List of attendee email addresses.",
+                "description": "List of attendee email addresses (e.g. 'john@example.com'). Must be valid email addresses — do NOT pass names. If you only have a name, ask the user for their email first.",
             },
             "calendar_id": {
                 "type": "string",
                 "description": "Calendar ID. Defaults to 'primary'.",
                 "default": "primary",
+            },
+            "reminder_minutes": {
+                "type": "integer",
+                "description": "Send an email reminder this many minutes before the event. Defaults to 30.",
+                "default": 30,
             },
         },
         "required": ["title", "start_time", "end_time"],
@@ -131,11 +136,20 @@ class GoogleCalendarCreateEvent(BaseTool):
 
     async def run(self, input: dict, org_keys: dict) -> dict:
         calendar_id = input.get("calendar_id", "primary")
+        reminder_minutes = int(input.get("reminder_minutes", 30))
 
         event_body: dict = {
             "summary": input["title"],
             "start": {"dateTime": input["start_time"]},
             "end": {"dateTime": input["end_time"]},
+            # Always set an email reminder so the organiser receives a notification
+            "reminders": {
+                "useDefault": False,
+                "overrides": [
+                    {"method": "email", "minutes": reminder_minutes},
+                    {"method": "popup", "minutes": 10},
+                ],
+            },
         }
         if input.get("description"):
             event_body["description"] = input["description"]

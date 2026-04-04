@@ -242,6 +242,14 @@ async def stream_message(
     thread_id = make_thread_id(session.org_id, session_id)
     config = {"configurable": {"thread_id": thread_id}}
 
+    # Node types whose LLM calls are internal (routing, review) — never stream their tokens
+    _INTERNAL_LLM_TYPES = {"condition", "human_review"}
+    _internal_node_ids = {
+        node["id"]
+        for node in (agent.graph_config.get("nodes", []) if agent.graph_config else [])
+        if node.get("type") in _INTERNAL_LLM_TYPES
+    }
+
     # Nodes we don't want to surface as node_start/end events (LangGraph internals)
     _SKIP_NODES = {"LangGraph", "__start__", ""}
 
@@ -255,6 +263,10 @@ async def stream_message(
             name: str = event.get("name", "")
 
             if kind == "on_chat_model_stream":
+                # Skip tokens from internal routing/review nodes
+                langgraph_node = event.get("metadata", {}).get("langgraph_node", "")
+                if langgraph_node in _internal_node_ids:
+                    continue
                 chunk = event["data"].get("chunk")
                 if chunk and getattr(chunk, "content", None):
                     yield _sse("token", {"content": chunk.content})
