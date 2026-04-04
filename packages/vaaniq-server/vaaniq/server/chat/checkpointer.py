@@ -8,6 +8,7 @@ Thread-ID format: "{org_id}:{session_id}" — org-prefixed for multi-tenant
 isolation so one org can never accidentally access another org's state.
 """
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from psycopg_pool import AsyncConnectionPool
 
 from vaaniq.server.core.config import settings
 
@@ -30,11 +31,25 @@ async def setup_checkpointer() -> None:
     Must be called once at application startup (FastAPI lifespan).
     AsyncPostgresSaver uses psycopg, which expects a plain postgresql:// URL
     (not postgresql+asyncpg://).
+
+    AsyncPostgresSaver.from_conn_string() is an async context manager, not a
+    coroutine — it cannot be awaited directly. Instead we create an
+    AsyncConnectionPool explicitly and pass it to the constructor.
     """
     global _checkpointer
     # Strip SQLAlchemy dialect suffix — psycopg uses the base driver URL
     conn_str = settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
-    _checkpointer = await AsyncPostgresSaver.from_conn_string(conn_str)
+    # autocommit=True is required by langgraph's setup() — it runs
+    # CREATE INDEX CONCURRENTLY which cannot execute inside a transaction.
+    # prepare_threshold=0 is required for PgBouncer compatibility.
+    pool = AsyncConnectionPool(
+        conninfo=conn_str,
+        max_size=20,
+        open=False,
+        kwargs={"autocommit": True, "prepare_threshold": 0},
+    )
+    await pool.open()
+    _checkpointer = AsyncPostgresSaver(pool)
     await _checkpointer.setup()
 
 
