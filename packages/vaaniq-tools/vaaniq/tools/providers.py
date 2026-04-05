@@ -220,7 +220,7 @@ PROVIDERS: dict[str, dict] = {
 SUPPORTED_PROVIDERS: set[str] = set(PROVIDERS.keys())
 
 # Providers where a live connectivity test is supported
-TESTABLE_PROVIDERS: set[str] = {"openai", "anthropic"}
+TESTABLE_PROVIDERS: set[str] = {"openai", "anthropic", "groq", "gemini", "mistral"}
 
 
 def build_org_keys(provider: str, credentials: dict, config: dict) -> object:

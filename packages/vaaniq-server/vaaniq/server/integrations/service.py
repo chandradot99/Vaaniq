@@ -76,6 +76,47 @@ async def _test_anthropic(api_key: str) -> TestIntegrationResponse:
         return TestIntegrationResponse(valid=False, tested=True, error=str(e))
 
 
+async def _test_groq(api_key: str) -> TestIntegrationResponse:
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                "https://api.groq.com/openai/v1/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+        if resp.status_code == 200:
+            return TestIntegrationResponse(valid=True, tested=True)
+        return TestIntegrationResponse(valid=False, tested=True, error=f"HTTP {resp.status_code}")
+    except Exception as e:
+        return TestIntegrationResponse(valid=False, tested=True, error=str(e))
+
+
+async def _test_gemini(api_key: str) -> TestIntegrationResponse:
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}",
+            )
+        if resp.status_code == 200:
+            return TestIntegrationResponse(valid=True, tested=True)
+        return TestIntegrationResponse(valid=False, tested=True, error=f"HTTP {resp.status_code}")
+    except Exception as e:
+        return TestIntegrationResponse(valid=False, tested=True, error=str(e))
+
+
+async def _test_mistral(api_key: str) -> TestIntegrationResponse:
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                "https://api.mistral.ai/v1/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+        if resp.status_code == 200:
+            return TestIntegrationResponse(valid=True, tested=True)
+        return TestIntegrationResponse(valid=False, tested=True, error=f"HTTP {resp.status_code}")
+    except Exception as e:
+        return TestIntegrationResponse(valid=False, tested=True, error=str(e))
+
+
 class PostgresCredentialStore(CredentialStore):
     """CredentialStore backed by the integrations table.
 
@@ -189,6 +230,12 @@ class IntegrationService:
             result = await _test_openai(creds.get("api_key", ""))
         elif integration.provider == "anthropic":
             result = await _test_anthropic(creds.get("api_key", ""))
+        elif integration.provider == "groq":
+            result = await _test_groq(creds.get("api_key", ""))
+        elif integration.provider == "gemini":
+            result = await _test_gemini(creds.get("api_key", ""))
+        elif integration.provider == "mistral":
+            result = await _test_mistral(creds.get("api_key", ""))
         else:
             result = TestIntegrationResponse(valid=True, tested=False)
 
