@@ -30,6 +30,7 @@ class SessionSummary(CustomModel):
     id: str
     agent_id: str
     status: str                         # active | ended
+    had_error: bool = False             # ended due to a node/graph error
     channel: str
     message_count: int
     tool_call_count: int

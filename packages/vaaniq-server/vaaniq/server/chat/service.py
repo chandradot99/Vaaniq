@@ -412,8 +412,12 @@ async def stream_message(
     # Errors live in state["error"] — never in state["messages"] — so voice/TTS
     # and the LLM conversation history are always clean.
     new_error = state_values.get("error")
-    if new_error and new_error != error_before:
+    error_triggered = bool(new_error and new_error != error_before)
+    if error_triggered:
         yield _sse("node_message", {"content": new_error, "is_error": True})
+        # End the session immediately — a failed node leaves the graph in an
+        # undefined state; letting the user continue would produce confusing results.
+        session_ended = True
 
     langsmith_url = _fetch_langsmith_url(capture.run_id) if capture.run_id else None
     _stream_meta: dict = {"turn_count": turn + 1}
@@ -421,6 +425,8 @@ async def stream_message(
         _stream_meta["langsmith_url"] = langsmith_url
 
     if session_ended:
+        if error_triggered:
+            _stream_meta["failed"] = True
         await session_repo.mark_ended(
             session_id,
             transcript=all_messages,
@@ -440,3 +446,23 @@ async def stream_message(
 
     yield _sse("ended", {"session_ended": session_ended})
     log.info("chat_stream_complete", session_id=session_id, session_ended=session_ended)
+
+
+async def abandon_session(session_id: str, org_id: str, db: AsyncSession) -> None:
+    """Mark an active session as ended with abandoned=True.
+
+    Called when the user closes the chat panel mid-conversation. Only acts on
+    active sessions — silently ignores sessions that are already ended.
+    """
+    session_repo = SessionRepository(db)
+    session = await session_repo.get(session_id)
+    if not session or session.org_id != org_id:
+        raise ChatSessionNotFound()
+    if session.status == "ended":
+        return  # already ended — nothing to do
+    await session_repo.mark_ended(
+        session_id,
+        meta={"abandoned": True},
+    )
+    await db.commit()
+    log.info("chat_session_abandoned", session_id=session_id, org_id=org_id)

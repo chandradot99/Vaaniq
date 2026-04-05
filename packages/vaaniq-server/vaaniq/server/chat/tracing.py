@@ -122,13 +122,40 @@ class TurnEventCollector:
                 # here to mark the node as errored in the timeline.
                 output = event.get("data", {}).get("output")
                 node_error = output.get("error") if isinstance(output, dict) else None
+                data = pending["data"]
+
+                # For run_tool nodes: embed the resolved input + output so the
+                # frontend debug panel can show exactly what was sent and received.
+                if isinstance(output, dict) and data.get("node_type") == "run_tool":
+                    tool_calls = output.get("tool_calls") or []
+                    if tool_calls:
+                        # Success path — tool_calls list is populated
+                        tc = tool_calls[0]
+                        data = {
+                            **data,
+                            "tool_name": tc.get("tool_name", ""),
+                            "tool_input": _truncate(tc.get("input", {})),
+                            "tool_output": _truncate(tc.get("output")),
+                            "tool_success": True,
+                        }
+                    else:
+                        # Error path — run_tool_debug carries the resolved input + error response
+                        debug = output.get("run_tool_debug") or {}
+                        data = {
+                            **data,
+                            "tool_name": debug.get("tool_name", ""),
+                            "tool_input": _truncate(debug.get("input", {})),
+                            "tool_output": _truncate(debug.get("output")),
+                            "tool_success": False,
+                        }
+
                 self._emit(
                     event_type="node",
                     name=pending["name"],
                     started_at=pending["started_at"],
                     ended_at=ended,
                     status="error" if node_error else "success",
-                    data=pending["data"],
+                    data=data,
                     error=node_error,
                 )
 

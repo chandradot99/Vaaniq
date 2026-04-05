@@ -63,6 +63,7 @@ async def list_sessions(
             id=s.id,
             agent_id=s.agent_id,
             status=s.status,
+            had_error=bool((s.meta or {}).get("failed", False)),
             channel=s.channel,
             message_count=len(s.transcript or []),
             tool_call_count=len(s.tool_calls or []),
@@ -74,6 +75,16 @@ async def list_sessions(
         for s in sessions
     ]
     return SessionListResponse(sessions=summaries, total=total)
+
+
+@router.post("/sessions/{session_id}/abandon", status_code=204)
+async def abandon_session(
+    session_id: str,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Mark an active session as ended when the user closes the chat panel."""
+    await service.abandon_session(session_id, current.org_id, db)
 
 
 @router.get("/sessions/{session_id}", response_model=SessionDetail)

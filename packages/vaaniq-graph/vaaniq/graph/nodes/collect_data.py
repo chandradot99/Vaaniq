@@ -32,11 +32,31 @@ _EXTRACT_SYSTEM = """\
 The assistant asked the user: "{question}"
 The user replied. Extract the value of "{field_name}" ({field_type}) from their reply.
 
+Today is {today}.
+
 Rules:
 - The user's reply is a direct answer to the question above — treat it as such.
 - For string fields: accept whatever the user said as the value. Do not reject unless the reply is completely empty or nonsensical.
-- For date fields: accept relative dates such as "tuesday", "tomorrow", "next monday", "April 10th", etc. as valid.
-- For time fields: accept expressions like "5pm", "5-6pm", "17:00", "5 to 6 pm" as valid.
+- For date/time fields: resolve to ISO 8601 format YYYY-MM-DDTHH:MM using today as the reference. Always use the current year unless the user explicitly said otherwise. If the user mentioned a timezone name (IST, EST, PST, GMT, CET, etc.), convert it to a UTC offset and include it — e.g. "10pm IST" → "2026-04-06T22:00+05:30", "3pm EST" → "2026-04-06T15:00-05:00". If no timezone mentioned, output without offset.
+{validation_hint}
+Reply with a JSON object: {{"value": <extracted value>, "valid": true}} if extraction succeeds,
+or {{"value": null, "valid": false, "reason": "<why>"}} if it truly does not.
+Reply with ONLY the JSON — no explanation."""
+
+_PRE_EXTRACT_SYSTEM = """\
+The user just sent the following message. Your job is to extract the value of "{field_name}" ({field_type}) \
+if it was mentioned — even implicitly or informally.
+
+Today is {today}.
+
+Context about what we are collecting:
+{instructions}
+
+Rules:
+- The user has NOT been asked for "{field_name}" yet — they volunteered this information upfront.
+- For string fields: accept anything the user said that fits. Reject only if truly absent.
+- For date/time fields: resolve to ISO 8601 format YYYY-MM-DDTHH:MM using today as the reference. Always use the current year unless the user explicitly said otherwise. If the user mentioned a timezone name (IST, EST, PST, GMT, CET, etc.), convert it to a UTC offset and include it — e.g. "10pm IST" → "2026-04-06T22:00+05:30". If no timezone mentioned, output without offset.
+- If the field value is not mentioned at all, reply with valid=false.
 {validation_hint}
 Reply with a JSON object: {{"value": <extracted value>, "valid": true}} if extraction succeeds,
 or {{"value": null, "valid": false, "reason": "<why>"}} if it truly does not.
@@ -46,6 +66,7 @@ Reply with ONLY the JSON — no explanation."""
 class CollectDataNode(BaseNode):
     async def __call__(self, state: SessionState) -> dict:
         fields: list[dict] = self.config.get("fields", [])
+        instructions: str = self.config.get("instructions", "")
         collected: dict = dict(state.get("collected") or {})
 
         # LangGraph preserves local variable state across interrupt()/resume cycles
@@ -68,7 +89,7 @@ class CollectDataNode(BaseNode):
             pending_fields = [f for f in fields if f["name"] not in collected]
             if pending_fields:
                 results = await asyncio.gather(
-                    *[self._extract(f, last_user_msg) for f in pending_fields],
+                    *[self._pre_extract(f, last_user_msg, instructions) for f in pending_fields],
                     return_exceptions=False,
                 )
                 for field, result in zip(pending_fields, results):
@@ -156,9 +177,32 @@ class CollectDataNode(BaseNode):
                     )
                     collected[pending["name"]] = user_response
 
+    async def _pre_extract(self, field: dict, user_message: str, instructions: str) -> dict:
+        """Extract a field value from the user's initial message (no Q&A question was asked yet)."""
+        validation_hint = field.get("validation_prompt", "")
+        today = datetime.now(timezone.utc).strftime("%A, %B %d, %Y")
+        system = _PRE_EXTRACT_SYSTEM.format(
+            today=today,
+            field_name=field["name"],
+            field_type=field.get("type", "string"),
+            instructions=instructions or "No additional context provided.",
+            validation_hint=validation_hint,
+        )
+        llm = get_llm(self.config, self.org_keys)
+        response = await llm.ainvoke([
+            SystemMessage(content=system),
+            HumanMessage(content=user_message),
+        ])
+        try:
+            return json.loads(response.content)
+        except (json.JSONDecodeError, AttributeError):
+            return {"value": None, "valid": False, "reason": "Could not parse response"}
+
     async def _extract(self, field: dict, user_message: str) -> dict:
         validation_hint = field.get("validation_prompt", "")
+        today = datetime.now(timezone.utc).strftime("%A, %B %d, %Y")
         system = _EXTRACT_SYSTEM.format(
+            today=today,
             question=field.get("prompt", field["name"]),
             field_name=field["name"],
             field_type=field.get("type", "string"),

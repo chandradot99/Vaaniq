@@ -136,6 +136,361 @@ AGENTS = [
     },
 
     # ------------------------------------------------------------------
+    # Personal Google Assistant — tests Calendar + Gmail + Sheets tools
+    # via condition routing, collect_data, and goto loops.
+    #
+    # Before running: replace REPLACE_WITH_YOUR_SPREADSHEET_ID in the
+    # do_booking node's instructions with a real Google Sheets ID.
+    # The sheet should have headers: Name | Email | Meeting | DateTime | Status
+    # ------------------------------------------------------------------
+    {
+        "name": "Personal Google Assistant",
+        "language": "en",
+        "simple_mode": False,
+        "system_prompt": (
+            "You are a helpful personal assistant connected to Google. "
+            "You can book meetings, check schedules, and send emails."
+        ),
+        "graph_config": {
+            "entry_point": "start",
+            "guards": [],
+            "groups": [],
+            "nodes": [
+                # ── Entry ──────────────────────────────────────────────
+                {
+                    "id": "start",
+                    "type": "start",
+                    "label": "Start",
+                    "position": {"x": 80, "y": 300},
+                    "config": {
+                        "system_message": (
+                            "You are a helpful personal assistant connected to Google. "
+                            "You help users book meetings on Google Calendar, check their "
+                            "upcoming schedule, and send emails via Gmail. "
+                            "Always be concise and friendly."
+                        ),
+                        "greeting": (
+                            "Hi! I'm your personal Google assistant. I can help you with:\n"
+                            "• Book a meeting — create a calendar event, send an invite, and log it to Sheets\n"
+                            "• Check your schedule — see what's coming up this week\n"
+                            "• Send an email — quick emails straight from Gmail\n\n"
+                            "What would you like to do?"
+                        ),
+                    },
+                },
+                {
+                    "id": "wait",
+                    "type": "inbound_message",
+                    "label": "Wait",
+                    "position": {"x": 280, "y": 300},
+                    "config": {},
+                },
+                {
+                    "id": "route",
+                    "type": "condition",
+                    "label": "Route Intent",
+                    "position": {"x": 500, "y": 300},
+                    "config": {
+                        "router_prompt": "Based on the user's latest message, what do they want to do?",
+                        "routes": [
+                            {
+                                "label": "book_meeting",
+                                "description": "User wants to schedule, book, or create a meeting or calendar event",
+                            },
+                            {
+                                "label": "check_schedule",
+                                "description": "User wants to see upcoming calendar events or check their schedule",
+                            },
+                            {
+                                "label": "send_email",
+                                "description": "User wants to send an email to someone",
+                            },
+                            {
+                                "label": "end",
+                                "description": "User says goodbye, thanks, or has nothing else to do",
+                            },
+                        ],
+                    },
+                },
+
+                # ── Book meeting branch ────────────────────────────────
+                # collect_data gathers all required fields. Start and end
+                # datetime are asked in ISO format (YYYY-MM-DDTHH:MM) so
+                # run_tool can append the timezone directly without an LLM.
+                {
+                    "id": "collect_booking",
+                    "type": "collect_data",
+                    "label": "Collect Booking",
+                    "position": {"x": 750, "y": 80},
+                    "config": {
+                        "instructions": (
+                            "The user wants to book a calendar meeting. They may mention the title, "
+                            "attendee name, date, or time upfront — extract whatever they already provided "
+                            "so we can skip asking for it. "
+                            "Dates and times may be informal (e.g. 'tomorrow 10pm', 'next Monday 3-4pm'). "
+                            "Datetimes should be in YYYY-MM-DDTHH:MM format."
+                        ),
+                        "fields": [
+                            {
+                                "name": "meeting_title",
+                                "type": "string",
+                                "prompt": "What is the meeting about? (event title)",
+                                "required": True,
+                            },
+                            {
+                                "name": "attendee_name",
+                                "type": "string",
+                                "prompt": "Who are you meeting with? (their name)",
+                                "required": True,
+                            },
+                            {
+                                "name": "attendee_email",
+                                "type": "string",
+                                "prompt": "What is their email address?",
+                                "required": True,
+                            },
+                            {
+                                "name": "start_datetime",
+                                "type": "string",
+                                "prompt": "Start date and time? (format: YYYY-MM-DDTHH:MM e.g. 2026-04-10T14:00)",
+                                "required": True,
+                            },
+                            {
+                                "name": "end_datetime",
+                                "type": "string",
+                                "prompt": "End date and time? (format: YYYY-MM-DDTHH:MM e.g. 2026-04-10T15:00, or press Enter to default to 1 hour after start)",
+                                "required": False,
+                            },
+                        ],
+                    },
+                },
+                # run_tool: creates the calendar event directly from collected fields.
+                # timezone field localises naive datetimes from collect_data to IST.
+                {
+                    "id": "create_event",
+                    "type": "run_tool",
+                    "label": "Create Calendar Event",
+                    "position": {"x": 1000, "y": 20},
+                    "config": {
+                        "tool": "google_calendar_create_event",
+                        "input": {
+                            "title":      "{{collected.meeting_title}}",
+                            "start_time": "{{collected.start_datetime}}",
+                            "end_time":   "{{collected.end_datetime}}",
+                            "attendees":  ["{{collected.attendee_email}}"],
+                            "timezone":   "Asia/Kolkata",
+                        },
+                    },
+                },
+                # run_tool: sends a confirmation email to the attendee.
+                # The email body is a static template filled from collected fields.
+                {
+                    "id": "send_invite",
+                    "type": "run_tool",
+                    "label": "Send Invite Email",
+                    "position": {"x": 1000, "y": 140},
+                    "config": {
+                        "tool": "gmail_send_email",
+                        "input": {
+                            "to":      "{{collected.attendee_email}}",
+                            "subject": "Meeting Invite: {{collected.meeting_title}}",
+                            "body": (
+                                "Hi {{collected.attendee_name}},\n\n"
+                                "You have been invited to a meeting.\n\n"
+                                "Title: {{collected.meeting_title}}\n"
+                                "Start: {{collected.start_datetime}}\n"
+                                "End:   {{collected.end_datetime}}\n\n"
+                                "A calendar invite has also been sent to your email.\n\n"
+                                "See you then!"
+                            ),
+                        },
+                    },
+                },
+                # run_tool: logs the booking row to Google Sheets.
+                # Replace REPLACE_WITH_YOUR_SPREADSHEET_ID before running.
+                {
+                    "id": "log_booking",
+                    "type": "run_tool",
+                    "label": "Log to Sheets",
+                    "position": {"x": 1000, "y": 260},
+                    "config": {
+                        "tool": "google_sheets_append_row",
+                        "input": {
+                            "spreadsheet_id": "REPLACE_WITH_YOUR_SPREADSHEET_ID",
+                            "range":  "Sheet1",
+                            "values": [
+                                "{{collected.attendee_name}}",
+                                "{{collected.attendee_email}}",
+                                "{{collected.meeting_title}}",
+                                "{{collected.start_datetime}}",
+                                "scheduled",
+                            ],
+                        },
+                    },
+                },
+                # llm_response: no tools — only generates the confirmation message.
+                # The conversation history already contains all the booking details
+                # from collect_data, so the LLM can reference them naturally.
+                {
+                    "id": "confirm_booking",
+                    "type": "llm_response",
+                    "label": "Confirm Booking",
+                    "position": {"x": 1250, "y": 140},
+                    "config": {
+                        "instructions": (
+                            "All three steps have just been completed automatically:\n"
+                            "1. The calendar event has been created\n"
+                            "2. A confirmation email has been sent to the attendee\n"
+                            "3. The booking has been logged to Google Sheets\n\n"
+                            "Write a short, friendly confirmation to the user. "
+                            "Mention the meeting title and time (from the conversation). "
+                            "Ask if there is anything else you can help with."
+                        ),
+                        "rag_enabled": False,
+                        "tools": [],
+                    },
+                },
+
+                # ── Check schedule branch ──────────────────────────────
+                # run_tool: fetches calendar events and saves them to rag_context
+                # so the llm_response node below can read and format them.
+                {
+                    "id": "list_events",
+                    "type": "run_tool",
+                    "label": "Fetch Calendar Events",
+                    "position": {"x": 750, "y": 320},
+                    "config": {
+                        "tool": "google_calendar_list_events",
+                        "input": {
+                            "days_ahead":  7,
+                            "max_results": 10,
+                        },
+                        "save_response_to": "rag_context",
+                    },
+                },
+                # llm_response: reads the raw event data from rag_context and
+                # formats it into a readable schedule for the user. No tools needed.
+                {
+                    "id": "show_schedule",
+                    "type": "llm_response",
+                    "label": "Show Schedule",
+                    "position": {"x": 1000, "y": 320},
+                    "config": {
+                        "instructions": (
+                            "The user's upcoming Google Calendar events have just been fetched "
+                            "and are available in your context below. "
+                            "Format them into a clean, readable list for the user — show each "
+                            "event's title, date, and time. "
+                            "If the calendar is empty, tell them so. "
+                            "Then ask if there is anything else you can help with."
+                        ),
+                        "rag_enabled": True,
+                        "tools": [],
+                    },
+                },
+
+                # ── Send email branch ──────────────────────────────────
+                {
+                    "id": "collect_email",
+                    "type": "collect_data",
+                    "label": "Collect Email",
+                    "position": {"x": 750, "y": 520},
+                    "config": {
+                        "fields": [
+                            {
+                                "name": "email_to",
+                                "type": "string",
+                                "prompt": "Who should I send it to? (email address)",
+                                "required": True,
+                            },
+                            {
+                                "name": "email_subject",
+                                "type": "string",
+                                "prompt": "What's the subject line?",
+                                "required": True,
+                            },
+                            {
+                                "name": "email_body",
+                                "type": "string",
+                                "prompt": "What should the email say?",
+                                "required": True,
+                            },
+                        ],
+                    },
+                },
+                # run_tool: sends the email directly from collected fields — no LLM needed.
+                {
+                    "id": "send_email",
+                    "type": "run_tool",
+                    "label": "Send Email",
+                    "position": {"x": 1000, "y": 520},
+                    "config": {
+                        "tool": "gmail_send_email",
+                        "input": {
+                            "to":      "{{collected.email_to}}",
+                            "subject": "{{collected.email_subject}}",
+                            "body":    "{{collected.email_body}}",
+                        },
+                    },
+                },
+                # llm_response: no tools — only generates the sent confirmation.
+                {
+                    "id": "confirm_email",
+                    "type": "llm_response",
+                    "label": "Confirm Email Sent",
+                    "position": {"x": 1250, "y": 520},
+                    "config": {
+                        "instructions": (
+                            "The email has just been sent successfully. "
+                            "Confirm to the user that it was sent — mention the recipient "
+                            "and subject (from the conversation). "
+                            "Ask if there is anything else you can help with."
+                        ),
+                        "rag_enabled": False,
+                        "tools": [],
+                    },
+                },
+
+                # ── Terminal ───────────────────────────────────────────
+                {
+                    "id": "farewell",
+                    "type": "end_session",
+                    "label": "Farewell",
+                    "position": {"x": 750, "y": 720},
+                    "config": {
+                        "farewell_message": "Great talking with you! Have a wonderful day. Goodbye!",
+                    },
+                },
+            ],
+            "edges": [
+                {"id": "e1",  "source": "start",           "target": "wait"},
+                {"id": "e2",  "source": "wait",            "target": "route"},
+                # Routing
+                {"id": "e3",  "source": "route",           "target": "collect_booking", "condition": "book_meeting"},
+                {"id": "e4",  "source": "route",           "target": "list_events",     "condition": "check_schedule"},
+                {"id": "e5",  "source": "route",           "target": "collect_email",   "condition": "send_email"},
+                {"id": "e6",  "source": "route",           "target": "farewell",        "condition": "end"},
+                # Book meeting flow: collect → create event → send invite → log → confirm → loop
+                {"id": "e7",  "source": "collect_booking", "target": "create_event"},
+                {"id": "e8",  "source": "create_event",    "target": "send_invite"},
+                {"id": "e9",  "source": "send_invite",     "target": "log_booking"},
+                {"id": "e10", "source": "log_booking",     "target": "confirm_booking"},
+                {"id": "e11", "source": "confirm_booking", "target": "wait",
+                 "goto": True, "goto_node_position": {"x": 1450, "y": 140}},
+                # Check schedule flow: fetch → format → loop
+                {"id": "e12", "source": "list_events",     "target": "show_schedule"},
+                {"id": "e13", "source": "show_schedule",   "target": "wait",
+                 "goto": True, "goto_node_position": {"x": 1180, "y": 320}},
+                # Send email flow: collect → send → confirm → loop
+                {"id": "e14", "source": "collect_email",   "target": "send_email"},
+                {"id": "e15", "source": "send_email",      "target": "confirm_email"},
+                {"id": "e16", "source": "confirm_email",   "target": "wait",
+                 "goto": True, "goto_node_position": {"x": 1450, "y": 520}},
+            ],
+        },
+    },
+
+    # ------------------------------------------------------------------
     # Smart Assistant — tests all node types + groups + goto edges
     # ------------------------------------------------------------------
     {

@@ -40,6 +40,19 @@ class RunToolNode(BaseNode):
             self.config.get("input", {}), state, self.org_keys
         )
 
+        # Normalize + type-coerce inputs. Tools override normalize_input() for
+        # semantic validation (e.g. end_time > start_time for calendar events).
+        try:
+            resolved_input = tool.normalize_input(resolved_input)
+        except ValueError as exc:
+            error_msg = f"Input validation failed for '{tool_name}': {exc}"
+            log.error("run_tool_validation_error", tool=tool_name, error=str(exc), session_id=state.get("session_id"))
+            return {
+                "error": error_msg,
+                "current_node": "run_tool",
+                "run_tool_debug": {"tool_name": tool_name, "input": resolved_input, "output": str(exc)},
+            }
+
         # Validate required inputs before calling the tool.
         # TemplateResolver returns None for missing {{collected.field}} references.
         # Catching this here gives a clear error ("missing required input: end_time")
@@ -53,7 +66,11 @@ class RunToolNode(BaseNode):
                 f"Make sure your collect_data node collects these fields, or set them via set_variable."
             )
             log.error("run_tool_missing_inputs", tool=tool_name, missing=missing, session_id=state.get("session_id"))
-            return {"error": error_msg, "current_node": "run_tool"}
+            return {
+                "error": error_msg,
+                "current_node": "run_tool",
+                "run_tool_debug": {"tool_name": tool_name, "input": resolved_input, "output": None},
+            }
 
         log.info("run_tool_start", tool=tool_name, session_id=state.get("session_id"))
 
@@ -62,7 +79,11 @@ class RunToolNode(BaseNode):
         except Exception as exc:
             error_msg = f"Tool '{tool_name}' failed: {exc}"
             log.error("run_tool_error", tool=tool_name, error=str(exc), session_id=state.get("session_id"))
-            return {"error": error_msg, "current_node": "run_tool"}
+            return {
+                "error": error_msg,
+                "current_node": "run_tool",
+                "run_tool_debug": {"tool_name": tool_name, "input": resolved_input, "output": str(exc)},
+            }
 
         log.info("run_tool_done", tool=tool_name, session_id=state.get("session_id"))
 

@@ -101,11 +101,13 @@ class GoogleCalendarCreateEvent(BaseTool):
             },
             "start_time": {
                 "type": "string",
+                "format": "date-time",
                 "description": "Start datetime in ISO 8601 format, e.g. '2026-04-10T14:00:00+05:30'.",
             },
             "end_time": {
                 "type": "string",
-                "description": "End datetime in ISO 8601 format.",
+                "format": "date-time",
+                "description": "End datetime in ISO 8601 format. Must be after start_time.",
             },
             "description": {
                 "type": "string",
@@ -120,6 +122,14 @@ class GoogleCalendarCreateEvent(BaseTool):
                 "items": {"type": "string"},
                 "description": "List of attendee email addresses (e.g. 'john@example.com'). Must be valid email addresses — do NOT pass names. If you only have a name, ask the user for their email first.",
             },
+            "timezone": {
+                "type": "string",
+                "description": (
+                    "IANA timezone name for the event, e.g. 'Asia/Kolkata', 'America/New_York', 'UTC'. "
+                    "Used to localise datetimes that have no timezone offset. Defaults to 'UTC'."
+                ),
+                "default": "UTC",
+            },
             "calendar_id": {
                 "type": "string",
                 "description": "Calendar ID. Defaults to 'primary'.",
@@ -131,8 +141,55 @@ class GoogleCalendarCreateEvent(BaseTool):
                 "default": 30,
             },
         },
-        "required": ["title", "start_time", "end_time"],
+        "required": ["title", "start_time"],
     }
+
+    def normalize_input(self, inputs: dict) -> dict:
+        inputs = super().normalize_input(inputs)  # type coercion (reminder_minutes str→int, etc.)
+        start_raw = inputs.get("start_time")
+        end_raw = inputs.get("end_time") or None  # treat empty string as missing
+
+        if start_raw:
+            from datetime import datetime as dt, timedelta
+            from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+            tz_name = inputs.get("timezone") or "UTC"
+            try:
+                tz = ZoneInfo(tz_name)
+            except (ZoneInfoNotFoundError, KeyError):
+                raise ValueError(
+                    f"Unknown timezone '{tz_name}'. Use an IANA timezone name like 'Asia/Kolkata' or 'UTC'."
+                )
+
+            def _parse_and_localize(raw: str, field: str) -> dt:
+                try:
+                    parsed = dt.fromisoformat(raw)
+                except ValueError:
+                    raise ValueError(
+                        f"{field} '{raw}' is not a valid ISO 8601 datetime. "
+                        f"Expected format: '2026-04-10T14:00' or '2026-04-10T14:00:00+05:30'."
+                    )
+                # If naive (no timezone info), localize using the provided timezone
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=tz)
+                return parsed
+
+            start = _parse_and_localize(start_raw, "start_time")
+            # Write back the timezone-aware ISO string so the API receives it correctly
+            inputs["start_time"] = start.isoformat()
+
+            if not end_raw:
+                inputs["end_time"] = (start + timedelta(hours=1)).isoformat()
+            else:
+                end = _parse_and_localize(end_raw, "end_time")
+                if end <= start:
+                    raise ValueError(
+                        f"end_time ({end_raw}) must be after start_time ({start_raw}). "
+                        "The meeting end time cannot be before or equal to the start time."
+                    )
+                inputs["end_time"] = end.isoformat()
+
+        return inputs
 
     async def run(self, input: dict, org_keys: dict) -> dict:
         calendar_id = input.get("calendar_id", "primary")
