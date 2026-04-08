@@ -32,4 +32,4 @@ EXPOSE 8000
 
 # Use shell form so $PORT is expanded at runtime (Railway injects PORT env var).
 # ${PORT:-8000} falls back to 8000 for local docker run without Railway.
-CMD ["sh", "-c", "exec uv run uvicorn vaaniq.server.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2"]
+CMD ["sh", "-c", "exec uv run uvicorn vaaniq.server.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
