@@ -16,7 +16,6 @@ members = [
     "vaaniq-server",
     "vaaniq-tools",
     "vaaniq-voice",
-    "vaaniq-voice-server",
 ]
 
 [manifest.dependency-groups]
@@ -4156,36 +4155,6 @@ requires-dist = [
     { name = "twilio", specifier = ">=9.0" },
     { name = "vaaniq-core", editable = "packages/vaaniq-core" },
     { name = "vaaniq-graph", editable = "packages/vaaniq-graph" },
-]
-provides-extras = ["dev"]
-
-[[package]]
-name = "vaaniq-voice-server"
-version = "0.1.0"
-source = { editable = "packages/vaaniq-voice-server" }
-dependencies = [
-    { name = "fastapi" },
-    { name = "structlog" },
-    { name = "uvicorn" },
-    { name = "vaaniq-server" },
-    { name = "vaaniq-voice" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "fastapi", specifier = ">=0.115.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
-    { name = "structlog", specifier = ">=24.0.0" },
-    { name = "uvicorn", specifier = ">=0.30.0" },
-    { name = "vaaniq-server", editable = "packages/vaaniq-server" },
-    { name = "vaaniq-voice", editable = "packages/vaaniq-voice" },
 ]
 provides-extras = ["dev"]
 
