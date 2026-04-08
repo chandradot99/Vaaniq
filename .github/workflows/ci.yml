@@ -44,7 +44,7 @@ jobs:
         env:
           POSTGRES_USER: ${{ vars.CI_POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
-          POSTGRES_DB: ${{ vars.CI_POSTGRES_DB }}
+          POSTGRES_DB: vaaniq_test
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -74,22 +74,19 @@ jobs:
       - name: Install all packages
         run: uv sync
 
-      - name: Create test database
-        run: PGPASSWORD=${{ secrets.CI_POSTGRES_PASSWORD }} psql -h localhost -U ${{ vars.CI_POSTGRES_USER }} -d ${{ vars.CI_POSTGRES_DB }} -c "CREATE DATABASE vaaniq_test;"
-
       - name: Lint
         run: uvx ruff check packages/vaaniq-server/
 
       - name: Check migrations
         env:
-          DATABASE_URL: ${{ vars.CI_DATABASE_URL }}
+          DATABASE_URL: ${{ vars.TEST_DATABASE_URL }}
           SECRET_KEY: ${{ secrets.CI_SECRET_KEY }}
           FERNET_KEY: ${{ secrets.CI_FERNET_KEY }}
         run: uv run alembic -c packages/vaaniq-server/alembic.ini upgrade head
 
       - name: Test
         env:
-          DATABASE_URL: ${{ vars.CI_DATABASE_URL }}
+          DATABASE_URL: ${{ vars.TEST_DATABASE_URL }}
           TEST_DATABASE_URL: ${{ vars.TEST_DATABASE_URL }}
           REDIS_URL: ${{ vars.CI_REDIS_URL }}
           SECRET_KEY: ${{ secrets.CI_SECRET_KEY }}
