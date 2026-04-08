@@ -130,12 +130,16 @@ async def test_finalization_stamps_ended_at():
 
 @pytest.mark.asyncio
 async def test_finalization_skips_if_no_checkpoint():
+    """Checkpointer returns None (no state) → nothing to write."""
     from vaaniq.server.voice.finalization import _do_finalize
+
+    session = _make_session()
+    session.transcript = []  # no transcript — must proceed to checkpointer
 
     mock_checkpointer = AsyncMock()
     mock_checkpointer.aget = AsyncMock(return_value=None)
     mock_session_repo = MagicMock()
-    mock_session_repo.get_by_id = AsyncMock()
+    mock_session_repo.get_by_id = AsyncMock(return_value=session)
     db = AsyncMock()
 
     with (
@@ -144,19 +148,48 @@ async def test_finalization_skips_if_no_checkpoint():
     ):
         await _do_finalize("sess-1", "org-1", db)
 
-    # Session should never be loaded if no checkpoint
-    mock_session_repo.get_by_id.assert_not_called()
+    # Checkpointer was called but returned nothing — nothing committed
+    mock_checkpointer.aget.assert_called_once()
+    db.commit.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_finalization_skips_if_already_finalized():
+    """Session already has transcript (pipeline already ran) → skip quietly."""
+    from vaaniq.server.voice.finalization import _do_finalize
+
+    session = _make_session()
+    session.transcript = [{"role": "agent", "content": "Hello"}]  # already set
+
+    mock_session_repo = MagicMock()
+    mock_session_repo.get_by_id = AsyncMock(return_value=session)
+    db = AsyncMock()
+
+    with (
+        patch("vaaniq.server.voice.finalization.SessionRepository", return_value=mock_session_repo),
+    ):
+        await _do_finalize("sess-1", "org-1", db)
+
+    # No checkpointer access, no commit — status callback was redundant
     db.commit.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_finalization_graceful_if_checkpointer_not_init():
-    """RuntimeError from get_checkpointer() is caught and logged, not re-raised."""
+    """RuntimeError from get_checkpointer() is caught and logged as debug, not re-raised."""
     from vaaniq.server.voice.finalization import _do_finalize
 
+    session = _make_session()
+    session.transcript = []  # no transcript — must try checkpointer
+
+    mock_session_repo = MagicMock()
+    mock_session_repo.get_by_id = AsyncMock(return_value=session)
     db = AsyncMock()
 
-    with patch("vaaniq.server.voice.finalization.get_checkpointer", side_effect=RuntimeError("not init")):
+    with (
+        patch("vaaniq.server.voice.finalization.get_checkpointer", side_effect=RuntimeError("not init")),
+        patch("vaaniq.server.voice.finalization.SessionRepository", return_value=mock_session_repo),
+    ):
         # Must not raise
         await _do_finalize("sess-1", "org-1", db)
 

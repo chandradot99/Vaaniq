@@ -13,7 +13,7 @@ Config:
 """
 import structlog
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from pydantic import BaseModel, Field
+from typing import TypedDict
 
 from vaaniq.graph.nodes.base import BaseNode
 from vaaniq.graph.nodes.llm import get_llm
@@ -33,8 +33,10 @@ Available routes:
 You must respond with exactly one of the route labels listed above."""
 
 
-class _RouteDecision(BaseModel):
-    route: str = Field(description="The chosen route label — must exactly match one of the available labels.")
+class _RouteDecision(TypedDict):
+    """TypedDict instead of BaseModel — avoids Pydantic serialization warnings
+    when LangGraph checkpoints the structured output response via MemorySaver."""
+    route: str
 
 
 class ConditionNode(BaseNode):
@@ -57,7 +59,8 @@ class ConditionNode(BaseNode):
             decision: _RouteDecision = await llm_structured.ainvoke(
                 [SystemMessage(content=system)] + history
             )
-            route = decision.route.strip().lower()
+            # TypedDict → plain dict at runtime; access with [] not attribute
+            route = decision["route"].strip().lower()
             if route not in valid_labels:
                 log.warning(
                     "condition_invalid_route",

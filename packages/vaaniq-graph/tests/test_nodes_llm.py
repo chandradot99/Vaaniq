@@ -47,6 +47,11 @@ def _mock_llm(response_text: str):
     ai_response.tool_calls = []
     mock.ainvoke = AsyncMock(return_value=ai_response)
     mock.bind_tools = MagicMock(return_value=mock)
+    # with_structured_output returns a chain whose ainvoke yields a dict
+    # (TypedDict is a plain dict at runtime — ConditionNode uses decision["route"])
+    structured_mock = MagicMock()
+    structured_mock.ainvoke = AsyncMock(return_value={"route": response_text})
+    mock.with_structured_output = MagicMock(return_value=structured_mock)
     return mock
 
 
@@ -224,13 +229,13 @@ async def test_condition_includes_conversation_history():
     mock_llm = _mock_llm("pricing")
     captured = []
 
+    # The condition node calls llm.with_structured_output(...).ainvoke(messages)
+    # so we capture from the structured chain, not from llm.ainvoke directly.
     async def capture_invoke(messages):
         captured.extend(messages)
-        response = MagicMock()
-        response.content = "pricing"
-        return response
+        return {"route": "pricing"}
 
-    mock_llm.ainvoke = capture_invoke
+    mock_llm.with_structured_output.return_value.ainvoke = capture_invoke
 
     with patch("vaaniq.graph.nodes.condition.get_llm", return_value=mock_llm):
         node = ConditionNode(

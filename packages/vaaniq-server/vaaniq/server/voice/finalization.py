@@ -65,31 +65,38 @@ async def _do_finalize(
 ) -> None:
     thread_id = make_thread_id(org_id, session_id)
 
+    # ── Load session row ──────────────────────────────────────────────────────
+    session = await SessionRepository(db).get_by_id(session_id)
+    if not session:
+        log.warning("finalization_session_not_found", session_id=session_id)
+        return
+
+    # If the pipeline task already finalized this session (transcript present),
+    # the status callback is redundant — skip the checkpointer lookup entirely.
+    # This is the normal path for voice: pipeline finalizes via MemorySaver,
+    # status callback arrives seconds later and finds nothing left to do.
+    if session.transcript and not memory_saver:
+        log.debug("finalization_already_done", session_id=session_id)
+        return
+
     # ── Load LangGraph checkpoint ─────────────────────────────────────────────
     try:
         checkpointer = memory_saver or get_checkpointer()
         checkpoint = await checkpointer.aget({"configurable": {"thread_id": thread_id}})
     except RuntimeError:
-        # Checkpointer not initialised (e.g. in tests) — nothing to do
-        log.warning("finalization_no_checkpointer", session_id=session_id)
+        # Checkpointer not initialised — voice server uses MemorySaver, not Postgres.
+        # If we got here the session has no transcript (pipeline never ran or crashed).
+        log.debug("finalization_no_checkpointer", session_id=session_id)
         return
     except Exception:
         log.exception("finalization_checkpointer_error", session_id=session_id)
         return
 
     if not checkpoint:
-        # For voice calls this is expected — voice uses MemorySaver (in-memory)
-        # and is finalized directly by task.py before this callback runs.
         log.debug("finalization_no_checkpoint", session_id=session_id, thread_id=thread_id)
         return
 
     state: dict = checkpoint.get("channel_values", {})
-
-    # ── Load session row ──────────────────────────────────────────────────────
-    session = await SessionRepository(db).get_by_id(session_id)
-    if not session:
-        log.warning("finalization_session_not_found", session_id=session_id)
-        return
 
     # ── Copy state fields into session ────────────────────────────────────────
     changed = False

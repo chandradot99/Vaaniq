@@ -125,7 +125,10 @@ async def test_transfer_human_whisper_template():
         org_keys=ORG_KEYS,
     )
     result = await node(_state(collected={"name": "Amit"}))
-    assert result["messages"][0]["content"] == "Customer Amit wants to book"
+    # whisper_template is resolved into whisper_message (for the receiving agent),
+    # NOT into messages (which shows the hold message to the caller).
+    assert result["whisper_message"] == "Customer Amit wants to book"
+    assert result["messages"][0]["content"] == "Transferring you to a human agent. Please hold."
 
 
 # ── HttpRequestNode ───────────────────────────────────────────────────────────
