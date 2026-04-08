@@ -175,7 +175,10 @@ async def _react_loop(
 
 class LLMResponseNode(BaseNode):
     async def __call__(self, state: GraphSessionState) -> dict:
-        from vaaniq.tools.registry import TOOL_REGISTRY  # deferred to avoid circular import
+        try:
+            from vaaniq.tools.registry import TOOL_REGISTRY  # deferred to avoid circular import
+        except ImportError:
+            TOOL_REGISTRY = {}  # vaaniq-tools not installed (isolated test env)
 
         global_system: str = state.get("system_message", "")
         instructions: str = self.config.get("instructions", "")
