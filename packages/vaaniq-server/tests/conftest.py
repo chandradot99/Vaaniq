@@ -7,8 +7,21 @@ Create it once before running tests locally:
 
 CI creates vaaniq_test automatically in the workflow.
 Tables are created once per session and truncated after each test.
+
+Required env vars (set in .env locally, injected by CI workflow):
+    TEST_DATABASE_URL, TEST_REDIS_URL, TEST_SECRET_KEY, TEST_FERNET_KEY
 """
 import os
+
+# Map TEST_* vars to the names the app reads via pydantic-settings.
+# Must happen before any app module is imported.
+for _app_var, _test_var in {
+    "DATABASE_URL": "TEST_DATABASE_URL",
+    "REDIS_URL":    "TEST_REDIS_URL",
+    "SECRET_KEY":   "TEST_SECRET_KEY",
+    "FERNET_KEY":   "TEST_FERNET_KEY",
+}.items():
+    os.environ[_app_var] = os.environ[_test_var]
 
 import pytest
 from httpx import ASGITransport, AsyncClient
