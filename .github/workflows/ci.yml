@@ -74,6 +74,9 @@ jobs:
       - name: Install all packages
         run: uv sync
 
+      - name: Create test database
+        run: PGPASSWORD=vaaniq psql -h localhost -U vaaniq -d vaaniq -c "CREATE DATABASE vaaniq_test;"
+
       - name: Lint
         run: uvx ruff check packages/vaaniq-server/
 
@@ -87,7 +90,6 @@ jobs:
       - name: Test
         env:
           DATABASE_URL: postgresql+asyncpg://vaaniq:vaaniq@localhost:5432/vaaniq
-          TEST_DATABASE_URL: postgresql+asyncpg://vaaniq:vaaniq@localhost:5432/vaaniq
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: test-secret
           FERNET_KEY: ""

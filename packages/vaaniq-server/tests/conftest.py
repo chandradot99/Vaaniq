@@ -1,27 +1,20 @@
 """
 Test fixtures.
 
-Uses a real PostgreSQL test database.
-
-Local dev — create the test DB once before running:
+Uses a real PostgreSQL test database (vaaniq_test).
+Create it once before running tests locally:
     docker exec vaaniq-postgres-1 psql -U vaaniq -c "CREATE DATABASE vaaniq_test;"
-Then run:
-    uv run pytest packages/vaaniq-server/tests/ -v
 
-CI — TEST_DATABASE_URL is set in the workflow; falls back to vaaniq_test locally.
+CI creates vaaniq_test automatically in the workflow.
+Tables are created once per session and truncated after each test.
 """
-import os
-
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from vaaniq.server.core.database import Base, get_db
 from vaaniq.server.main import app
 
-TEST_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL",
-    "postgresql+asyncpg://vaaniq:vaaniq@localhost:5432/vaaniq_test",
-)
+TEST_DATABASE_URL = "postgresql+asyncpg://vaaniq:vaaniq@localhost:5432/vaaniq_test"
 
 
 @pytest.fixture(scope="session")
