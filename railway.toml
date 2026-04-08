@@ -1,0 +1,35 @@
+# Railway project configuration
+# https://docs.railway.com/reference/config-as-code
+#
+# This file configures the vaaniq-api service on Railway.
+# PostgreSQL and Redis are provisioned as Railway managed services
+# (add them via the Railway dashboard — no config needed here).
+#
+# Required environment variables (set in Railway dashboard):
+#   DATABASE_URL       postgresql+asyncpg://...
+#   REDIS_URL          redis://...
+#   SECRET_KEY         long random string (JWT signing)
+#   FERNET_KEY         base64 Fernet key (BYOK encryption)
+#   ALLOWED_ORIGINS    https://app.vaaniq.ai,https://vaaniq.ai
+#   ENVIRONMENT        production
+#   BACKEND_URL        https://<your-railway-domain>
+#   SENTRY_DSN         (optional but recommended)
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "packages/vaaniq-server/Dockerfile"
+
+[deploy]
+# releaseCommand runs inside the new container BEFORE it starts serving
+# traffic. If it fails, Railway keeps the old container running — zero
+# downtime on failed migrations.
+releaseCommand = "uv run alembic -c packages/vaaniq-server/alembic.ini upgrade head"
+
+# Railway injects $PORT automatically — always bind to it, never hardcode.
+startCommand = "uv run uvicorn vaaniq.server.main:app --host 0.0.0.0 --port $PORT --workers 2"
+
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10

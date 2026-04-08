@@ -1,15 +1,46 @@
-.venv/
-.git/
-.github/
-__pycache__/
+# Version control
+.git
+.gitignore
+
+# Python artifacts
+__pycache__
 *.pyc
 *.pyo
-*.egg-info/
-dist/
-build/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-**/.env
-*.md
+*.pyd
+*.egg-info
+.eggs
+dist
+build
+
+# Virtual environments
+.venv
+venv
+env
+
+# Test artifacts
+.pytest_cache
+.mypy_cache
+.ruff_cache
+htmlcov
+.coverage
+coverage.xml
+
+# Dev tooling
+.github
+.pre-commit-config.yaml
 .python-version
+
+# Docs (not needed at runtime)
+*.md
+docs/
+
+# Local env files (secrets come from Railway env vars, not baked into image)
+.env
+.env.*
+!.env.example
+
+# Scripts (not needed at runtime)
+scripts/
+
+# Local dev only
+docker-compose*.yml
