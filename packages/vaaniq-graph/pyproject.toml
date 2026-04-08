@@ -14,6 +14,7 @@ dependencies = [
     "langchain-mistralai>=0.2.0",
     "langgraph-checkpoint-postgres>=2.0.0",
     "httpx>=0.27.0",
+    "structlog>=24.0.0",
 ]
 
 [project.optional-dependencies]
