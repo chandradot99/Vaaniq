@@ -10,7 +10,6 @@ Twilio PSTN audio is 8kHz mono mu-law. Deepgram accepts it natively.
 from typing import Optional
 
 from deepgram import LiveOptions
-from deepgram.audio.microphone import Microphone  # noqa: F401 — triggers SDK validation
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from vaaniq.voice.constants import DEEPGRAM_ENDPOINTING_MS, TWILIO_SAMPLE_RATE
 

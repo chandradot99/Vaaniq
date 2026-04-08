@@ -9,7 +9,7 @@ dependencies = [
     # Pipecat core + Twilio transport
     "pipecat-ai[cartesia,deepgram,elevenlabs,silero]>=0.0.93",
     # STT providers
-    "deepgram-sdk>=3.0",
+    "deepgram-sdk>=3.0,<6",
     "assemblyai>=0.30",
     # TTS providers
     "cartesia>=1.0",
