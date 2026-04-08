@@ -79,14 +79,14 @@ jobs:
 
       - name: Check migrations
         env:
-          DATABASE_URL: ${{ vars.TEST_DATABASE_URL }}
+          DATABASE_URL: ${{ vars.DATABASE_URL }}
           SECRET_KEY: ${{ secrets.CI_SECRET_KEY }}
           FERNET_KEY: ${{ secrets.CI_FERNET_KEY }}
         run: uv run alembic -c packages/vaaniq-server/alembic.ini upgrade head
 
       - name: Test
         env:
-          TEST_DATABASE_URL: ${{ vars.TEST_DATABASE_URL }}
+          DATABASE_URL: ${{ vars.DATABASE_URL }}
           REDIS_URL: ${{ vars.CI_REDIS_URL }}
           SECRET_KEY: ${{ secrets.CI_SECRET_KEY }}
           FERNET_KEY: ${{ secrets.CI_FERNET_KEY }}
