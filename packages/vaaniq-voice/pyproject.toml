@@ -2,14 +2,34 @@
 name = "vaaniq-voice"
 version = "0.1.0"
 description = "Voice pipeline for Vaaniq (Pipecat PSTN + LiveKit WebRTC)"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "vaaniq-core>=0.1.0",
     "vaaniq-graph>=0.1.0",
+    # Pipecat core + Twilio transport
+    # Note: [silero] extra excluded — it pulls numba which doesn't support Python 3.14.
+    # Silero VAD is loaded via onnxruntime directly (pipecat-ai bundles this path).
+    "pipecat-ai[cartesia,deepgram,elevenlabs,silero,twilio]>=0.0.93",
+    # STT providers
+    "deepgram-sdk>=3.0",
+    "assemblyai>=0.30",
+    # TTS providers
+    "cartesia>=1.0",
+    "elevenlabs>=1.0",
+    "azure-cognitiveservices-speech>=1.40",
+    # Twilio
+    "twilio>=9.0",
+    # HTTP
+    "httpx>=0.27",
+    "pydantic>=2.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "pytest-asyncio>=0.24"]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "pytest-mock>=3.14",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -17,3 +37,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["vaaniq"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

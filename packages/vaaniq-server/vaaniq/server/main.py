@@ -11,6 +11,9 @@ from vaaniq.server.integrations.router import router as integrations_router
 from vaaniq.server.tools.router import router as tools_router
 from vaaniq.server.chat.router import router as chat_router
 from vaaniq.server.admin.router import router as admin_router
+from vaaniq.server.webhooks.router import router as webhooks_router
+from vaaniq.server.voice.router import router as voice_router
+import vaaniq.server.voice.models  # noqa: F401 — registers PhoneNumber with Base.metadata
 
 
 @asynccontextmanager
@@ -43,6 +46,8 @@ app.include_router(integrations_router)
 app.include_router(tools_router)
 app.include_router(chat_router)
 app.include_router(admin_router)
+app.include_router(webhooks_router)
+app.include_router(voice_router)
 
 
 @app.get("/health")

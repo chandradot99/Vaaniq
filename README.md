@@ -30,7 +30,8 @@ Vaaniq is built as multiple composable Python packages under a shared `vaaniq` n
 | `vaaniq-rag` | RAG pipeline + vector DB connectors | `pip install vaaniq-rag` |
 | `vaaniq-tools` | Pre-built tool library (Calendar, CRM, Payments, …) | `pip install vaaniq-tools` |
 | `vaaniq-channels` | Chat (SSE) + WhatsApp channel handlers | `pip install vaaniq-channels` |
-| `vaaniq-server` | FastAPI server — ties all packages together | self-hosted only |
+| `vaaniq-server` | FastAPI server — REST APIs, DB, auth | self-hosted only |
+| `vaaniq-voice-server` | Standalone voice server — all Twilio webhooks + Pipecat pipeline | self-hosted only |
 
 Install only what you need:
 
@@ -94,14 +95,22 @@ docker-compose up postgres redis -d
 uv run alembic -c packages/vaaniq-server/alembic.ini upgrade head
 ```
 
-### 6. Start the server
+### 6. Start the servers
+
+Vaaniq runs as two separate processes. Open two terminals:
 
 ```bash
-uv run uvicorn vaaniq.server.main:app --reload
+# Terminal 1 — main API server (REST, DB, auth, chat)
+uv run uvicorn vaaniq.server.main:app --port 8000 --reload
+
+# Terminal 2 — voice server (Twilio webhooks, Pipecat pipeline)
+uv run uvicorn vaaniq.voice_server.main:app --port 8001 --reload
 ```
 
-Server is available at `http://localhost:8000`.  
-API docs at `http://localhost:8000/docs` (development only).
+Point Twilio's webhook URLs at the voice server (`http://your-domain:8001/...`).  
+All other API calls go to the main server (`http://your-domain:8000/...`).
+
+API docs at `http://localhost:8000/docs` and `http://localhost:8001/docs` (development only).
 
 ### Full stack with Docker
 

@@ -128,9 +128,8 @@ class AgentService:
         if agent.org_id != org_id:
             raise AgentAccessDenied()
 
-        fields: dict[str, Any] = {
-            k: v for k, v in data.model_dump(exclude_unset=True).items() if v is not None
-        }
+        dumped = data.model_dump(exclude_unset=True)
+        fields: dict[str, Any] = {k: v for k, v in dumped.items() if v is not None}
 
         # If system_prompt changed and no custom graph has been set, regenerate default graph
         if "system_prompt" in fields and agent.simple_mode:
@@ -151,14 +150,20 @@ class AgentService:
         if agent.org_id != org_id:
             raise AgentAccessDenied()
 
-        await self.repo.update(agent_id, graph_config=graph_config, simple_mode=False)
+        new_version = (agent.graph_version or 1) + 1
+        await self.repo.update(
+            agent_id,
+            graph_config=graph_config,
+            graph_version=new_version,
+            simple_mode=False,
+        )
         await self.db.commit()
         # expire_on_commit=False means commit does NOT clear the session identity map.
         # Refresh forces a SELECT to get the just-written graph_config instead of the
         # stale pre-update values still sitting in the ORM cache.
         await self.db.refresh(agent)
 
-        log.info("agent_graph_updated", org_id=org_id, agent_id=agent_id)
+        log.info("agent_graph_updated", org_id=org_id, agent_id=agent_id, graph_version=new_version)
         return _to_response(agent)
 
     async def delete(self, agent_id: str, org_id: str) -> None:

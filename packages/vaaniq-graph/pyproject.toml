@@ -2,7 +2,7 @@
 name = "vaaniq-graph"
 version = "0.1.0"
 description = "Visual LangGraph execution engine for Vaaniq"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "vaaniq-core>=0.1.0",
     "langgraph>=0.2.0",

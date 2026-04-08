@@ -118,6 +118,79 @@ PLATFORM_PROVIDER_SCHEMAS: dict[str, dict] = {
             },
         ],
     },
+    # ── Voice providers ────────────────────────────────────────────────────────
+    # Platform-level defaults — orgs can override by adding their own keys in Integrations.
+    "twilio": {
+        "display_name": "Twilio",
+        "category": "voice",
+        "description": "Platform-level Twilio account for inbound/outbound calls. Orgs can bring their own Twilio credentials via Integrations.",
+        "fields": [
+            {
+                "key": "account_sid",
+                "label": "Account SID",
+                "secret": False,
+                "required": True,
+                "placeholder": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            },
+            {
+                "key": "auth_token",
+                "label": "Auth Token",
+                "secret": True,
+                "required": True,
+                "placeholder": "your_auth_token",
+            },
+            {
+                "key": "webhook_url",
+                "label": "Public Webhook URL",
+                "secret": False,
+                "required": True,
+                "placeholder": "https://your-domain.com",
+                "default": "http://localhost:8000",
+            },
+        ],
+    },
+    "deepgram": {
+        "display_name": "Deepgram",
+        "category": "voice",
+        "description": "STT (Nova-2) and TTS (Aura) for voice calls. One API key covers both. Used as default STT and TTS fallback when Cartesia is not configured.",
+        "fields": [
+            {
+                "key": "api_key",
+                "label": "API Key",
+                "secret": True,
+                "required": True,
+                "placeholder": "your_deepgram_api_key",
+            },
+        ],
+    },
+    "cartesia": {
+        "display_name": "Cartesia",
+        "category": "voice",
+        "description": "Low-latency text-to-speech. First-choice TTS provider — used when an org has not connected their own key.",
+        "fields": [
+            {
+                "key": "api_key",
+                "label": "API Key",
+                "secret": True,
+                "required": True,
+                "placeholder": "your_cartesia_api_key",
+            },
+        ],
+    },
+    "elevenlabs": {
+        "display_name": "ElevenLabs",
+        "category": "voice",
+        "description": "Realistic TTS with voice cloning support. Used as fallback when Cartesia is not configured.",
+        "fields": [
+            {
+                "key": "api_key",
+                "label": "API Key",
+                "secret": True,
+                "required": True,
+                "placeholder": "your_elevenlabs_api_key",
+            },
+        ],
+    },
 }
 
-CATEGORIES = ["oauth", "observability"]
+CATEGORIES = ["oauth", "voice", "observability"]

@@ -329,7 +329,7 @@ class _CollectorCallbackHandler(BaseCallbackHandler):
         self._c = collector
 
     def on_chain_start(self, serialized: dict, inputs: dict, *, run_id: uuid.UUID, parent_run_id: uuid.UUID | None = None, name: str | None = None, **kwargs: Any) -> None:  # noqa: ARG002
-        node_name = name or (serialized.get("id", [""])[-1] if serialized.get("id") else "")
+        node_name = name or (serialized.get("id", [""])[-1] if serialized and serialized.get("id") else "")
         self._c.ingest({
             "event": "on_chain_start",
             "name": node_name,

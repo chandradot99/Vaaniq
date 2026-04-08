@@ -12,6 +12,7 @@ from vaaniq.server.agents import models as agent_models  # noqa: F401
 from vaaniq.server.models import integration as integration_model  # noqa: F401
 from vaaniq.server.models import session as session_model  # noqa: F401
 from vaaniq.server.models import platform_config as platform_config_model  # noqa: F401
+from vaaniq.server.voice import models as voice_models  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)

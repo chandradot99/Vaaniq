@@ -7,16 +7,18 @@ members = [
     "packages/vaaniq-tools",
     "packages/vaaniq-channels",
     "packages/vaaniq-server",
+    "packages/vaaniq-voice-server",
 ]
 
 [tool.uv.sources]
-vaaniq-core     = { workspace = true }
-vaaniq-graph    = { workspace = true }
-vaaniq-voice    = { workspace = true }
-vaaniq-rag      = { workspace = true }
-vaaniq-tools    = { workspace = true }
-vaaniq-channels = { workspace = true }
-vaaniq-server   = { workspace = true }
+vaaniq-core         = { workspace = true }
+vaaniq-graph        = { workspace = true }
+vaaniq-voice        = { workspace = true }
+vaaniq-rag          = { workspace = true }
+vaaniq-tools        = { workspace = true }
+vaaniq-channels     = { workspace = true }
+vaaniq-server       = { workspace = true }
+vaaniq-voice-server = { workspace = true }
 
 [tool.ruff]
 line-length = 100
@@ -26,5 +28,11 @@ target-version = "py312"
 select = ["E", "F", "I"]
 
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.12"
 strict = true
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+]

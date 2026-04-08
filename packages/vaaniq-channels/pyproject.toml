@@ -2,7 +2,7 @@
 name = "vaaniq-channels"
 version = "0.1.0"
 description = "Chat (SSE) and WhatsApp channel handlers for Vaaniq"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "vaaniq-core>=0.1.0",
     "vaaniq-graph>=0.1.0",

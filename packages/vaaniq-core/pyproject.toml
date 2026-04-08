@@ -2,7 +2,7 @@
 name = "vaaniq-core"
 version = "0.1.0"
 description = "Base classes and SessionState for Vaaniq"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.0",
 ]

@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     otel_exporter_otlp_endpoint: Optional[str] = None
     environment: str = "development"
     backend_url: str = "http://localhost:8000"
+    voice_server_url: str = "http://localhost:8001"  # VOICE_SERVER_URL — Fly.io URL in production
     frontend_url: str = "http://localhost:3000"
 
     # ── OAuth provider credentials ────────────────────────────────────────────
@@ -33,6 +34,10 @@ class Settings(BaseSettings):
     # Slack — register at https://api.slack.com/apps (future)
     # slack_oauth_client_id: str = ""
     # slack_oauth_client_secret: str = ""
+
+    # ── Twilio (platform-level fallback — orgs bring their own via integrations) ─
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
 
     # ── LangSmith tracing ─────────────────────────────────────────────────────
     # LangChain reads these from os.environ — setup_observability() pushes them there.

@@ -40,6 +40,7 @@ def get_llm(config: dict, org_keys: dict) -> BaseChatModel:
             api_key=org_keys.get("openai"),
             model=model or "gpt-4o-mini",
             temperature=temperature,
+            streaming=True,
         )
 
     if provider == "anthropic":
@@ -47,6 +48,7 @@ def get_llm(config: dict, org_keys: dict) -> BaseChatModel:
             api_key=org_keys.get("anthropic"),
             model=model or "claude-3-5-haiku-20241022",
             temperature=temperature,
+            streaming=True,
         )
 
     if provider == "groq":
