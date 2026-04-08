@@ -31,7 +31,7 @@ jobs:
         run: uv sync --package ${{ matrix.package }}
 
       - name: Lint
-        run: uv run --package ${{ matrix.package }} ruff check packages/${{ matrix.package }}/
+        run: uvx ruff check packages/${{ matrix.package }}/
 
       - name: Test
         run: uv run --package ${{ matrix.package }} pytest packages/${{ matrix.package }}/tests/ -v
