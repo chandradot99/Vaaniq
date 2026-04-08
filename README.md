@@ -49,7 +49,7 @@ pip install vaaniq-tools[all]                  # all tools
 
 - [uv](https://docs.astral.sh/uv/) >= 0.4
 - Docker + Docker Compose
-- Python 3.14+
+- Python 3.12+
 
 ### 1. Clone
 
@@ -61,7 +61,7 @@ cd vaaniq
 ### 2. Install dependencies
 
 ```bash
-uv python install 3.14
+uv python install 3.12
 uv sync
 ```
 
@@ -175,7 +175,7 @@ uv run alembic -c packages/vaaniq-server/alembic.ini upgrade head
 
 ## Tech Stack
 
-- **Runtime:** Python 3.14, FastAPI, SQLAlchemy (async), Alembic
+- **Runtime:** Python 3.12, FastAPI, SQLAlchemy (async), Alembic
 - **Agent engine:** LangGraph, LangChain
 - **Voice:** Pipecat (PSTN), LiveKit (WebRTC)
 - **Database:** PostgreSQL 16 + pgvector

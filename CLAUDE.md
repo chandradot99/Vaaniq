@@ -92,7 +92,7 @@ End business client     vaaniq.ai (your SaaS)       Hosted cloud version
 [project]
 name = "vaaniq-tools"
 version = "0.1.0"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "vaaniq-core>=0.1.0",
     "httpx>=0.27",          # base — used by webhook.py and all tool HTTP calls
@@ -322,7 +322,7 @@ Each package has its own `pyproject.toml`:
 name = "vaaniq-graph"
 version = "0.1.0"
 description = "Visual LangGraph execution engine for Vaaniq"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "vaaniq-core>=0.1.0",
     "langgraph>=0.2.0",
