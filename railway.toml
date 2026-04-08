@@ -24,9 +24,7 @@ dockerfilePath = "packages/vaaniq-server/Dockerfile"
 # traffic. If it fails, Railway keeps the old container running — zero
 # downtime on failed migrations.
 releaseCommand = "uv run alembic -c packages/vaaniq-server/alembic.ini upgrade head"
-
-# Railway injects $PORT automatically — always bind to it, never hardcode.
-startCommand = "uv run uvicorn vaaniq.server.main:app --host 0.0.0.0 --port $PORT --workers 2"
+# startCommand omitted — Dockerfile CMD handles it with ${PORT:-8000} shell expansion.
 
 healthcheckPath = "/health"
 healthcheckTimeout = 300
