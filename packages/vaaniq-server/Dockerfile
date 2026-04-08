@@ -16,8 +16,10 @@ COPY pyproject.toml uv.lock ./
 # Copy all packages (local — not on PyPI yet)
 COPY packages/ packages/
 
-# Install dependencies (no dev deps in production)
-RUN uv sync --frozen --no-dev
+# Install only vaaniq-server and its dependencies.
+# --package scopes the install to one workspace member, so vaaniq-voice-server
+# (which goes to Fly.io) is never built here.
+RUN uv sync --package vaaniq-server --frozen --no-dev
 
 # Create non-root user for security
 RUN useradd -m appuser

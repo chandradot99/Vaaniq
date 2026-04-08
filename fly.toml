@@ -1,0 +1,48 @@
+# Fly.io configuration for vaaniq-voice-server
+# https://fly.io/docs/reference/configuration/
+#
+# Deploy: fly deploy --config fly.toml
+#
+# The voice server runs close to Twilio's media edge (iad region) to minimise
+# audio latency. vaaniq-server (API) runs separately on Railway.
+#
+# Required secrets (set via fly secrets set KEY=value):
+#   DATABASE_URL        postgresql+asyncpg://...  ← same DB as Railway API server
+#   REDIS_URL           redis://...               ← same Redis as Railway
+#   SECRET_KEY          ← same as Railway (JWT validation shared between servers)
+#   FERNET_KEY          ← same as Railway (BYOK decryption)
+#   ENVIRONMENT         production
+#   BACKEND_URL         https://<railway-api-domain>
+#   VOICE_SERVER_URL    https://<fly-app-name>.fly.dev
+#   SENTRY_DSN          (optional)
+
+app = "vaaniq-voice"
+primary_region = "iad"  # Twilio's primary US media edge — minimises audio RTT
+
+[build]
+  dockerfile = "packages/vaaniq-voice-server/Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false   # voice calls must not be interrupted by machine shutdown
+  auto_start_machines = true
+  min_machines_running = 1     # always at least one machine ready for inbound calls
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 100
+    soft_limit = 80
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"               # Pipecat + Silero VAD + onnxruntime need ~512MB
+
+[checks]
+  [checks.health]
+    grace_period = "30s"       # allow time for graph cache prewarm at startup
+    interval = "15s"
+    method = "GET"
+    path = "/health"
+    protocol = "http"
+    timeout = "5s"
