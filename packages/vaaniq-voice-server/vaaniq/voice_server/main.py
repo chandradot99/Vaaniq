@@ -39,18 +39,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_observability()
 
     from vaaniq.server.admin.platform_cache import reload as reload_platform_cache
+    from vaaniq.server.chat.checkpointer import setup_checkpointer
     from vaaniq.server.core.database import async_session_factory
     from vaaniq.voice.services.vad import preload_vad
 
+    # 1. Set up the AsyncPostgresSaver — must happen before prewarm so graphs
+    #    are compiled with the Postgres checkpointer, not MemorySaver.
+    #    State written during voice calls survives server restarts and is
+    #    readable by any machine in a multi-instance deployment.
+    await setup_checkpointer()
+
     async with async_session_factory() as db:
-        # 1. Load platform config (Twilio creds, webhook URLs) into memory cache.
+        # 2. Load platform config (Twilio creds, webhook URLs) into memory cache.
         await reload_platform_cache(db)
 
-        # 2. Pre-load Silero VAD model — pays the ~100ms disk read once at startup
+        # 3. Pre-load Silero VAD model — pays the ~100ms disk read once at startup
         #    instead of on the first caller's call.
         await preload_vad()
 
-        # 3. Pre-compile all active agents' graphs into the in-process cache so
+        # 4. Pre-compile all active agents' graphs into the in-process cache so
         #    the first call to each agent doesn't pay compilation cost.
         await _prewarm_graph_cache(db)
 
@@ -63,10 +70,19 @@ async def _prewarm_graph_cache(db) -> None:
     """
     Compile all active agents' graphs at startup and store them in the cache.
     Best-effort: individual failures are logged but don't block startup.
+
+    The Postgres checkpointer must be set up before this is called so graphs
+    are compiled with AsyncPostgresSaver, not MemorySaver.
     """
     from vaaniq.graph.cache import get_or_compile
     from vaaniq.server.agents.repository import AgentRepository
+    from vaaniq.server.chat.checkpointer import get_checkpointer
     from vaaniq.server.integrations.service import PostgresCredentialStore
+
+    try:
+        checkpointer = get_checkpointer()
+    except RuntimeError:
+        checkpointer = None  # local dev without Postgres — MemorySaver fallback
 
     agents = await AgentRepository(db).list_all_active()
     if not agents:
@@ -85,6 +101,7 @@ async def _prewarm_graph_cache(db) -> None:
                 graph_version=agent.graph_version or 1,
                 graph_config=agent.graph_config,
                 org_keys=org_keys,
+                checkpointer=checkpointer,
             )
             warmed += 1
         except Exception:

@@ -134,6 +134,7 @@ async def twilio_voice_stream(
     await websocket.accept()
     log.info("voice_stream_connected", session_id=session_id)
     try:
+        from vaaniq.server.chat.checkpointer import get_checkpointer
         from vaaniq.server.voice.context_builder import build_voice_context
         from vaaniq.voice.pipeline.task import run_voice_pipeline
 
@@ -142,7 +143,17 @@ async def twilio_voice_stream(
             websocket=websocket,
             db=db,
         )
-        await run_voice_pipeline(websocket=websocket, context=context)
+
+        try:
+            checkpointer = get_checkpointer()
+        except RuntimeError:
+            checkpointer = None  # local dev without Postgres — MemorySaver fallback
+
+        await run_voice_pipeline(
+            websocket=websocket,
+            context=context,
+            checkpointer=checkpointer,
+        )
     except WebSocketDisconnect:
         log.info("voice_stream_disconnected", session_id=session_id)
     except Exception as exc:

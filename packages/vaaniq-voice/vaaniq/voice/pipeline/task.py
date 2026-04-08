@@ -107,13 +107,19 @@ async def _finalize_session(
         log.exception("voice_finalization_error", session_id=session_id)
 
 
-async def run_voice_pipeline(websocket, context: VoiceCallContext) -> None:
+async def run_voice_pipeline(
+    websocket,
+    context: VoiceCallContext,
+    checkpointer=None,
+) -> None:
     """
     Entry point called by the WebSocket endpoint for each incoming call.
 
     Args:
-        websocket: FastAPI WebSocket object for this call.
-        context:   Fully resolved VoiceCallContext (built by context_builder.py).
+        websocket:    FastAPI WebSocket object for this call.
+        context:      Fully resolved VoiceCallContext (built by context_builder.py).
+        checkpointer: AsyncPostgresSaver (production) or None (dev → MemorySaver).
+                      Passed through to build_pipeline and returned for finalization.
     """
     log.info(
         "voice_pipeline_start",
@@ -138,7 +144,8 @@ async def run_voice_pipeline(websocket, context: VoiceCallContext) -> None:
 
     try:
         pipeline, llm_context, transport, memory_saver = await build_pipeline(
-            websocket, context, get_turn_callbacks=get_turn_callbacks
+            websocket, context, get_turn_callbacks=get_turn_callbacks,
+            checkpointer=checkpointer,
         )
 
         task = PipelineTask(

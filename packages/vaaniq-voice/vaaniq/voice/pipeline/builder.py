@@ -72,18 +72,20 @@ async def build_pipeline(
     websocket,
     context: VoiceCallContext,
     get_turn_callbacks: Optional[Callable[[int], list]] = None,
+    checkpointer=None,
 ) -> tuple[Pipeline, LLMContext, object, object]:
     """
     Assemble the full Pipecat pipeline for one voice call.
 
     Returns:
-        pipeline:      Ready-to-run Pipecat Pipeline.
-        llm_context:   The LLMContext so the task runner can queue the initial
-                       LLMContextFrame that triggers the turn-0 greeting.
-        transport:     The FastAPIWebsocketTransport — caller registers
-                       on_client_disconnected to push EndFrame on hangup.
-        memory_saver:  The MemorySaver checkpointer — caller reads the final
-                       state after pipeline ends and writes transcript to DB.
+        pipeline:     Ready-to-run Pipecat Pipeline.
+        llm_context:  The LLMContext so the task runner can queue the initial
+                      LLMContextFrame that triggers the turn-0 greeting.
+        transport:    The FastAPIWebsocketTransport — caller registers
+                      on_client_disconnected to push EndFrame on hangup.
+        checkpointer: The effective checkpointer (AsyncPostgresSaver in production,
+                      MemorySaver in dev). Caller passes this to finalization so it
+                      can read the final graph state after the call ends.
     """
     log.info(
         "pipeline_build_start",
@@ -127,6 +129,7 @@ async def build_pipeline(
         graph_version=context.graph_version,
         graph_config=context.graph_config,
         org_keys=context.org_keys,
+        checkpointer=checkpointer,
     )
     thread_id = f"{context.org_id}:{context.session_id}"
     initial_state = _build_initial_state(context)
