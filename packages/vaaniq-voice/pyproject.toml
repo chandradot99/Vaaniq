@@ -7,8 +7,6 @@ dependencies = [
     "vaaniq-core>=0.1.0",
     "vaaniq-graph>=0.1.0",
     # Pipecat core + Twilio transport
-    # Note: [silero] extra excluded — it pulls numba which has limited Python 3.12 support.
-    # Silero VAD is loaded via onnxruntime directly (pipecat-ai bundles this path).
     "pipecat-ai[cartesia,deepgram,elevenlabs,silero,twilio]>=0.0.93",
     # STT providers
     "deepgram-sdk>=3.0",
