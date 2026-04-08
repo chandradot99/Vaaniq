@@ -44,7 +44,7 @@ jobs:
         env:
           POSTGRES_USER: ${{ vars.CI_POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
-          POSTGRES_DB: vaaniq_test
+          POSTGRES_DB: ${{ vars.CI_POSTGRES_DB }}
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
