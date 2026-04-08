@@ -25,6 +25,7 @@ for _app_var, _test_var in {
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from vaaniq.server.core.database import Base, get_db
 from vaaniq.server.main import app
@@ -39,7 +40,8 @@ async def engine():
         await conn.run_sync(Base.metadata.create_all)
     yield _engine
     async with _engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await conn.execute(text("DROP SCHEMA public CASCADE"))
+        await conn.execute(text("CREATE SCHEMA public"))
     await _engine.dispose()
 
 

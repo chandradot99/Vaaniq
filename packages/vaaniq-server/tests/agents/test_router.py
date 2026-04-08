@@ -12,7 +12,7 @@ async def test_create_agent_simple_mode(client: AsyncClient, auth_headers: dict)
     assert data["name"] == "Support Bot"
     assert data["simple_mode"] is True
     assert data["graph_config"] is not None
-    assert data["graph_config"]["entry_point"] == "llm_response"
+    assert data["graph_config"]["entry_point"] == "start"
 
 
 async def test_create_agent_with_system_prompt(client: AsyncClient, auth_headers: dict):
@@ -23,8 +23,8 @@ async def test_create_agent_with_system_prompt(client: AsyncClient, auth_headers
     )
     assert resp.status_code == 201
     data = resp.json()
-    node_config = data["graph_config"]["nodes"][0]["config"]
-    assert node_config["instructions"] == "You help users buy products."
+    start_config = data["graph_config"]["nodes"][0]["config"]
+    assert start_config["system_message"] == "You help users buy products."
 
 
 async def test_create_agent_invalid_language(client: AsyncClient, auth_headers: dict):
@@ -111,8 +111,8 @@ async def test_update_system_prompt_regenerates_graph(client: AsyncClient, auth_
         headers=auth_headers,
     )
     assert resp.status_code == 200
-    node_config = resp.json()["graph_config"]["nodes"][0]["config"]
-    assert node_config["instructions"] == "Updated prompt"
+    start_config = resp.json()["graph_config"]["nodes"][0]["config"]
+    assert start_config["system_message"] == "Updated prompt"
 
 
 # ── Update graph ──────────────────────────────────────────────────────────────
