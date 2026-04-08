@@ -42,6 +42,8 @@ select = ["E", "F", "I"]
 # Test files: long assertion messages and test data are acceptable
 "packages/*/tests/**/*.py" = ["E501"]
 "packages/*/tests/*.py" = ["E501"]
+# conftest.py sets os.environ before app imports — E402 is intentional
+"packages/*/tests/conftest.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.12"
