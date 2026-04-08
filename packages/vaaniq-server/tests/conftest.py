@@ -8,13 +8,18 @@ Create it once before running tests locally:
 CI creates vaaniq_test automatically in the workflow.
 Tables are created once per session and truncated after each test.
 """
+import os
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from vaaniq.server.core.database import Base, get_db
 from vaaniq.server.main import app
 
-TEST_DATABASE_URL = "postgresql+asyncpg://vaaniq:vaaniq@localhost:5432/vaaniq_test"
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://vaaniq:vaaniq@localhost:5432/vaaniq_test",
+)
 
 
 @pytest.fixture(scope="session")
