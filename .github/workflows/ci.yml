@@ -42,8 +42,8 @@ jobs:
       postgres:
         image: pgvector/pgvector:pg16
         env:
-          POSTGRES_USER: ${{ vars.CI_POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: vaaniq_test
         options: >-
           --health-cmd pg_isready
@@ -80,14 +80,14 @@ jobs:
       - name: Check migrations
         env:
           DATABASE_URL: ${{ vars.DATABASE_URL }}
-          SECRET_KEY: ${{ secrets.CI_SECRET_KEY }}
-          FERNET_KEY: ${{ secrets.CI_FERNET_KEY }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          FERNET_KEY: ${{ secrets.FERNET_KEY }}
         run: uv run alembic -c packages/vaaniq-server/alembic.ini upgrade head
 
       - name: Test
         env:
           DATABASE_URL: ${{ vars.DATABASE_URL }}
-          REDIS_URL: ${{ vars.CI_REDIS_URL }}
-          SECRET_KEY: ${{ secrets.CI_SECRET_KEY }}
-          FERNET_KEY: ${{ secrets.CI_FERNET_KEY }}
+          REDIS_URL: ${{ vars.REDIS_URL }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          FERNET_KEY: ${{ secrets.FERNET_KEY }}
         run: uv run pytest packages/vaaniq-server/tests/ -v
