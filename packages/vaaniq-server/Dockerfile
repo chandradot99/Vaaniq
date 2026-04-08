@@ -16,14 +16,17 @@ COPY pyproject.toml uv.lock ./
 # Copy all packages (local — not on PyPI yet)
 COPY packages/ packages/
 
+# Create non-root user and transfer ownership before uv sync so the
+# .venv is owned by appuser from the start — avoids permission errors
+# when the container runtime tries to modify site-packages at startup.
+RUN useradd -m appuser && chown -R appuser:appuser /app
+
+USER appuser
+
 # Install only vaaniq-server and its dependencies.
 # --package scopes the install to one workspace member, so vaaniq-voice-server
 # (which goes to Fly.io) is never built here.
 RUN uv sync --package vaaniq-server --frozen --no-dev
-
-# Create non-root user for security
-RUN useradd -m appuser
-USER appuser
 
 EXPOSE 8000
 

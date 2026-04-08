@@ -11,13 +11,14 @@ COPY pyproject.toml uv.lock ./
 # Copy all packages (local — not on PyPI yet)
 COPY packages/ packages/
 
-# Install only vaaniq-voice-server and its dependencies.
-# --package scopes the install so vaaniq-server-only packages are excluded.
-RUN uv sync --package vaaniq-voice-server --frozen --no-dev
+# Create non-root user and transfer ownership before uv sync so the
+# .venv is owned by appuser from the start.
+RUN useradd -m appuser && chown -R appuser:appuser /app
 
-# Create non-root user for security
-RUN useradd -m appuser
 USER appuser
+
+# Install only vaaniq-voice-server and its dependencies.
+RUN uv sync --package vaaniq-voice-server --frozen --no-dev
 
 EXPOSE 8080
 
