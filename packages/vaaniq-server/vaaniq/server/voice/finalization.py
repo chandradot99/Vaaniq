@@ -19,11 +19,11 @@ If the checkpoint is missing (call dropped before any turns) the function
 exits gracefully — the session stays ended with whatever fields were already set.
 """
 
-import structlog
 from datetime import datetime, timezone
 from typing import Any, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
 
+import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
 from vaaniq.server.chat.checkpointer import get_checkpointer, make_thread_id
 from vaaniq.server.core.database import async_session_factory
 from vaaniq.server.webhooks.repository import SessionRepository

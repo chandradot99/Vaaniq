@@ -16,14 +16,13 @@ Field types: string | int | float | date | email | phone | bool
 """
 import asyncio
 import json
-import structlog
 from datetime import datetime, timezone
 
+import structlog
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.types import interrupt
-
-from vaaniq.graph.nodes.base import BaseNode
 from vaaniq.core.state import SessionState
+from vaaniq.graph.nodes.base import BaseNode
 from vaaniq.graph.nodes.llm import get_llm
 
 log = structlog.get_logger()

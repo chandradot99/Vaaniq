@@ -4,9 +4,8 @@ Unit tests for simple nodes — no LLM calls, no DB.
 SetVariable, EndSession, TransferHuman, HttpRequest,
 RagSearch (stub), PostSessionAction (stub).
 """
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 
 
 def _state(**kwargs):
@@ -135,7 +134,6 @@ async def test_transfer_human_whisper_template():
 
 async def test_http_request_success():
     from vaaniq.graph.nodes.http_request import HttpRequestNode
-    import httpx
 
     mock_response = MagicMock()
     mock_response.json.return_value = {"id": "ORD-123", "status": "confirmed"}
@@ -162,8 +160,8 @@ async def test_http_request_success():
 
 
 async def test_http_request_http_error_sets_error_state():
-    from vaaniq.graph.nodes.http_request import HttpRequestNode
     import httpx
+    from vaaniq.graph.nodes.http_request import HttpRequestNode
 
     node = HttpRequestNode(
         config={"method": "GET", "url": "https://api.example.com/fail"},

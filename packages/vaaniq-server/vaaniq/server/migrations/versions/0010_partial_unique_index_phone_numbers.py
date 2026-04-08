@@ -11,8 +11,6 @@ The new partial index enforces uniqueness only where deleted_at IS NULL, so:
 """
 
 from alembic import op
-import sqlalchemy as sa
-
 
 revision = "0010"
 down_revision = "0009"

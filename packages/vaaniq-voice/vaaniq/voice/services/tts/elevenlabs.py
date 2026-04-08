@@ -12,7 +12,6 @@ voice quality or voice cloning is required.
 from typing import Optional
 
 from pipecat.services.elevenlabs.tts import ElevenLabsTTSService
-
 from vaaniq.voice.constants import TWILIO_SAMPLE_RATE
 
 _DEFAULT_MODEL = "eleven_flash_v2_5"   # fastest with good quality

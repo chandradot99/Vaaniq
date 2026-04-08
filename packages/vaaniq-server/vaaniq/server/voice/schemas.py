@@ -6,9 +6,7 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import field_validator
-
 from vaaniq.server.core.schemas import CustomModel
-
 
 # ── Voice Config ──────────────────────────────────────────────────────────────
 

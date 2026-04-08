@@ -4,9 +4,9 @@ Tests for post-call session finalization.
 All tests mock the checkpointer and DB session — no real Postgres required.
 """
 
-import pytest
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 
 def _make_session(session_id="sess-1", org_id="org-1"):
@@ -224,8 +224,8 @@ async def test_finalization_does_not_overwrite_existing_summary():
 
 @pytest.mark.asyncio
 async def test_handle_status_returns_session_info_on_terminal():
-    from vaaniq.server.webhooks.service import VoiceWebhookService
     from vaaniq.server.models.session import Session, SessionStatus
+    from vaaniq.server.webhooks.service import VoiceWebhookService
 
     session = MagicMock(spec=Session)
     session.id = "sess-1"
@@ -252,8 +252,8 @@ async def test_handle_status_returns_session_info_on_terminal():
 
 @pytest.mark.asyncio
 async def test_handle_status_returns_none_on_non_terminal():
-    from vaaniq.server.webhooks.service import VoiceWebhookService
     from vaaniq.server.models.session import Session, SessionStatus
+    from vaaniq.server.webhooks.service import VoiceWebhookService
 
     session = MagicMock(spec=Session)
     session.id = "sess-1"

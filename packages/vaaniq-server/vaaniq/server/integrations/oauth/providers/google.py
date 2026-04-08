@@ -23,9 +23,8 @@ import asyncio
 
 import httpx
 from google_auth_oauthlib.flow import Flow
-
-from vaaniq.server.core.config import settings
 from vaaniq.server.admin.platform_cache import get_provider_config
+from vaaniq.server.core.config import settings
 from vaaniq.server.integrations.oauth.base import OAuthProvider
 
 _SCOPES = [

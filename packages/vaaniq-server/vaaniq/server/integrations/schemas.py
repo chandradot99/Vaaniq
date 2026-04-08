@@ -1,7 +1,8 @@
 from datetime import datetime
+
 from pydantic import field_validator
 from vaaniq.server.core.schemas import CustomModel
-from vaaniq.server.integrations.constants import SUPPORTED_PROVIDERS, PROVIDERS
+from vaaniq.server.integrations.constants import PROVIDERS, SUPPORTED_PROVIDERS
 
 
 class CreateIntegrationRequest(CustomModel):

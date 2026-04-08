@@ -1,9 +1,7 @@
 """
 Integration tests for /v1/agents — requires PostgreSQL vaaniq_test database.
 """
-import pytest
 from httpx import AsyncClient
-
 
 # ── Create ────────────────────────────────────────────────────────────────────
 

@@ -13,11 +13,10 @@ Key changes from previous version:
 - VoiceCallContext requires graph_version field
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from vaaniq.voice.pipeline.context import VoiceCallContext
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -148,8 +147,9 @@ def test_initial_state_has_required_fields():
 
 
 def test_initial_state_start_time_is_utc_iso():
-    from vaaniq.voice.pipeline.builder import _build_initial_state
     from datetime import datetime
+
+    from vaaniq.voice.pipeline.builder import _build_initial_state
     state = _build_initial_state(_make_context())
     dt = datetime.fromisoformat(state["start_time"])
     assert dt.tzinfo is not None
@@ -233,8 +233,6 @@ async def test_build_pipeline_thread_id_format():
     """thread_id passed to VaaniqLangGraphService must be '{org_id}:{session_id}'."""
     context = _make_context(org_id="my-org", session_id="my-sess")
     captured: dict = {}
-
-    original_service_cls = None
 
     def capture_service(**kwargs):
         captured["thread_id"] = kwargs.get("thread_id")
@@ -323,12 +321,6 @@ async def test_run_pipeline_queues_initial_context_frame():
         await run_voice_pipeline(MagicMock(name="ws"), context)
 
     mock_task.queue_frames.assert_called()
-    # Find the call that queued the LLMContextFrame (not the EndFrame from shutdown)
-    llm_frame_calls = [
-        call for call in mock_task.queue_frames.call_args_list
-        if any(isinstance(f, patches["LLMContextFrame"].return_value.__class__) or f is patches["LLMContextFrame"].return_value
-               for f in (call.args[0] if call.args else []))
-    ]
     # Simpler check: LLMContextFrame was constructed once with the context
     patches["LLMContextFrame"].assert_called_once_with(context=mock_llm_ctx)
 

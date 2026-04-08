@@ -6,13 +6,13 @@ Call management: list voice sessions, initiate outbound calls via Twilio REST AP
 """
 
 import uuid
+
 import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from vaaniq.server.admin import platform_cache
-from vaaniq.server.agents.repository import AgentRepository
 from vaaniq.server.agents.exceptions import AgentNotFound
+from vaaniq.server.agents.repository import AgentRepository
 from vaaniq.server.core.encryption import decrypt_key
 from vaaniq.server.integrations.repository import IntegrationRepository
 from vaaniq.server.models.session import Session, SessionStatus
@@ -36,7 +36,6 @@ from vaaniq.server.voice.schemas import (
     UpdateVoiceConfigRequest,
     VoiceConfig,
 )
-from vaaniq.voice.transport.twiml import outbound_connect_twiml
 
 log = structlog.get_logger()
 

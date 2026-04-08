@@ -12,9 +12,9 @@ Key behaviors tested:
 - Turn counter management
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from pipecat.frames.frames import (
     EndFrame,
     InterruptionTaskFrame,
@@ -25,14 +25,12 @@ from pipecat.frames.frames import (
     TextFrame,
 )
 from pipecat.processors.frame_processor import FrameDirection
-
 from vaaniq.voice.services.langgraph_service import (
     VaaniqLangGraphService,
     _extract_interrupt_text,
     _extract_user_text,
     _split_at_sentence_boundaries,
 )
-
 
 # ── Test data ─────────────────────────────────────────────────────────────────
 

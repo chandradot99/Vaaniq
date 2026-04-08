@@ -24,7 +24,6 @@ internally uses per-pipeline buffers, so concurrent calls don't interfere.
 import structlog
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
-
 from vaaniq.voice.constants import (
     VAD_CONFIDENCE,
     VAD_MIN_VOLUME,

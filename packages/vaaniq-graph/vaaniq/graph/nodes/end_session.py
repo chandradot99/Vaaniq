@@ -8,8 +8,8 @@ Config:
 """
 from datetime import datetime, timezone
 
+from vaaniq.core.state import Message, SessionState
 from vaaniq.graph.nodes.base import BaseNode
-from vaaniq.core.state import SessionState, Message
 
 
 class EndSessionNode(BaseNode):

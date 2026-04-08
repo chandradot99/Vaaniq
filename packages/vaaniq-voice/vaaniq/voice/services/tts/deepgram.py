@@ -18,7 +18,6 @@ Other available voices:
 from typing import Optional
 
 from pipecat.services.deepgram.tts import DeepgramTTSService
-
 from vaaniq.voice.constants import TWILIO_SAMPLE_RATE
 
 _DEFAULT_VOICE = "aura-2-helena-en"

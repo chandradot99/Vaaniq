@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from vaaniq.server.auth.dependencies import get_current_user, CurrentUser
+from vaaniq.server.auth.dependencies import CurrentUser, get_current_user
 from vaaniq.server.core.schemas import CustomModel
 
 router = APIRouter(prefix="/v1/tools", tags=["tools"])

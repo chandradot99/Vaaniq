@@ -6,9 +6,8 @@ Config:
     value (any)  literal value or {{template}} expression
 """
 import structlog
-
-from vaaniq.graph.nodes.base import BaseNode, PROTECTED_STATE_KEYS
 from vaaniq.core.state import SessionState
+from vaaniq.graph.nodes.base import PROTECTED_STATE_KEYS, BaseNode
 from vaaniq.graph.resolver import TemplateResolver
 
 log = structlog.get_logger()

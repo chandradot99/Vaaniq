@@ -1,19 +1,20 @@
 from datetime import datetime, timezone
+
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
-from vaaniq.server.core.security import (
-    hash_password,
-    verify_password,
-    create_access_token,
-    generate_refresh_token,
-    hash_token,
-)
 from vaaniq.server.auth.config import auth_settings
 from vaaniq.server.auth.constants import OrgRole
-from vaaniq.server.auth.models import User, Organization, OrgMember
+from vaaniq.server.auth.exceptions import InvalidCredentials, InvalidToken
+from vaaniq.server.auth.models import User
 from vaaniq.server.auth.repository import AuthRepository
 from vaaniq.server.auth.schemas import RegisterRequest, TokenResponse
-from vaaniq.server.auth.exceptions import InvalidCredentials, InvalidToken
+from vaaniq.server.core.security import (
+    create_access_token,
+    generate_refresh_token,
+    hash_password,
+    hash_token,
+    verify_password,
+)
 
 log = structlog.get_logger()
 

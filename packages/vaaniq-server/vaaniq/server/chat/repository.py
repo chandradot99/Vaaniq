@@ -7,9 +7,8 @@ transcript snapshot, and post-session analytics written when a session ends.
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from vaaniq.server.models.session import Session
 
 

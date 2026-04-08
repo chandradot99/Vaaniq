@@ -1,7 +1,7 @@
 """Shared LLM provider factory for graph nodes."""
 from langchain_anthropic import ChatAnthropic
-from langchain_openai import ChatOpenAI
 from langchain_core.language_models import BaseChatModel
+from langchain_openai import ChatOpenAI
 
 
 def get_llm(config: dict, org_keys: dict) -> BaseChatModel:

@@ -11,8 +11,8 @@ Config:
     query      (str)    optional explicit query; if omitted the last
                         user message is used as the query
 """
-from vaaniq.graph.nodes.base import BaseNode
 from vaaniq.core.state import SessionState
+from vaaniq.graph.nodes.base import BaseNode
 
 
 class RagSearchNode(BaseNode):

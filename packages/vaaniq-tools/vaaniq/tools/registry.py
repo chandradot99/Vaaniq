@@ -6,9 +6,9 @@ The registry is imported by:
   - vaaniq-server tools router (exposes tool catalog to the frontend)
 """
 from vaaniq.tools.base import BaseTool
-from vaaniq.tools.google.calendar import GoogleCalendarListEvents, GoogleCalendarCreateEvent
+from vaaniq.tools.google.calendar import GoogleCalendarCreateEvent, GoogleCalendarListEvents
 from vaaniq.tools.google.gmail import GmailSendEmail
-from vaaniq.tools.google.sheets import GoogleSheetsReadRange, GoogleSheetsAppendRow
+from vaaniq.tools.google.sheets import GoogleSheetsAppendRow, GoogleSheetsReadRange
 
 TOOL_REGISTRY: dict[str, BaseTool] = {
     # Google Calendar

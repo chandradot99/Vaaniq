@@ -17,7 +17,6 @@ import structlog
 from pipecat.frames.frames import EndFrame, LLMContextFrame
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
-
 from vaaniq.voice.constants import (
     PIPELINE_IDLE_TIMEOUT_SECS,
     PIPELINE_SHUTDOWN_TIMEOUT_SECS,

@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from vaaniq.server.voice.models import PhoneNumber
 
 

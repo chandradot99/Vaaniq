@@ -9,7 +9,6 @@ isolation so one org can never accidentally access another org's state.
 """
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg_pool import AsyncConnectionPool
-
 from vaaniq.server.core.config import settings
 
 _checkpointer: AsyncPostgresSaver | None = None

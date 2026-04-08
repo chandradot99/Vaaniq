@@ -20,8 +20,8 @@ from vaaniq.voice.exceptions import MissingAPIKeyError, ProviderNotFoundError
 # Registry: provider name (as stored in integrations table) → factory function.
 # Populated lazily to avoid importing heavy STT SDK dependencies at import time.
 def _build_registry() -> dict[str, Callable]:
-    from vaaniq.voice.services.stt.deepgram import create_deepgram_stt
     from vaaniq.voice.services.stt.assemblyai import create_assemblyai_stt
+    from vaaniq.voice.services.stt.deepgram import create_deepgram_stt
 
     return {
         "deepgram": create_deepgram_stt,

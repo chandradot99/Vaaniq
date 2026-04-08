@@ -14,9 +14,8 @@ Config: (none required)
 from datetime import datetime, timezone
 
 from langgraph.types import interrupt
-
+from vaaniq.core.state import Message, SessionState
 from vaaniq.graph.nodes.base import BaseNode
-from vaaniq.core.state import SessionState, Message
 
 
 class InboundMessageNode(BaseNode):

@@ -1,6 +1,7 @@
 import os
-import structlog
+
 import sentry_sdk
+import structlog
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from vaaniq.server.core.config import settings
 

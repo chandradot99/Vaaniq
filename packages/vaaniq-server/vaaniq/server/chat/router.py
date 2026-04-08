@@ -1,27 +1,26 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from vaaniq.server.core.database import get_db
-from vaaniq.server.auth.dependencies import get_current_user, CurrentUser
 from vaaniq.server.agents.dependencies import valid_agent
 from vaaniq.server.agents.models import Agent
+from vaaniq.server.auth.dependencies import CurrentUser, get_current_user
 from vaaniq.server.chat import service
-from vaaniq.server.chat.repository import SessionRepository
 from vaaniq.server.chat.exceptions import ChatSessionNotFound
+from vaaniq.server.chat.repository import SessionRepository
 from vaaniq.server.chat.schemas import (
-    StartChatResponse,
     SendMessageRequest,
     SendMessageResponse,
-    SessionListResponse,
     SessionDetail,
+    SessionEventSchema,
+    SessionListResponse,
     SessionSummary,
+    SessionTimeline,
+    StartChatResponse,
     ToolCallDetail,
     TranscriptMessage,
-    SessionTimeline,
-    SessionEventSchema,
 )
 from vaaniq.server.chat.tracing import SessionEventRepository
+from vaaniq.server.core.database import get_db
 
 router = APIRouter(prefix="/v1/chat", tags=["chat"])
 

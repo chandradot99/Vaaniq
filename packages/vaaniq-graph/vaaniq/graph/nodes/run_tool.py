@@ -6,12 +6,12 @@ Config:
     input             (dict)  input params — supports {{template}} syntax
     save_response_to  (str)   state key to store the tool result (optional)
 """
-import structlog
 from datetime import datetime, timezone
 
-from vaaniq.graph.nodes.base import BaseNode, PROTECTED_STATE_KEYS
-from vaaniq.graph.resolver import TemplateResolver
+import structlog
 from vaaniq.core.state import SessionState
+from vaaniq.graph.nodes.base import PROTECTED_STATE_KEYS, BaseNode
+from vaaniq.graph.resolver import TemplateResolver
 
 log = structlog.get_logger()
 

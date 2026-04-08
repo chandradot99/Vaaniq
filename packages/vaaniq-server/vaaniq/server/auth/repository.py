@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import select, update
-from vaaniq.server.auth.models import User, Organization, OrgMember, UserIdentity, RefreshToken
+from sqlalchemy.ext.asyncio import AsyncSession
+from vaaniq.server.auth.models import Organization, OrgMember, RefreshToken, User, UserIdentity
 
 
 class AuthRepository:

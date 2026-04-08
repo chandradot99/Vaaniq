@@ -5,8 +5,9 @@ Revises: 0003
 Create Date: 2026-04-03
 """
 from typing import Sequence, Union
-from alembic import op
+
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
 
 revision: str = "0004"

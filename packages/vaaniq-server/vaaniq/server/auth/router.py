@@ -1,10 +1,8 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from vaaniq.server.core.database import get_db
-from vaaniq.server.auth.dependencies import get_current_user, CurrentUser
-from vaaniq.server.auth.repository import AuthRepository
-from vaaniq.server.auth.service import AuthService
+from vaaniq.server.auth.dependencies import CurrentUser, get_current_user
 from vaaniq.server.auth.exceptions import EmailAlreadyExists
+from vaaniq.server.auth.repository import AuthRepository
 from vaaniq.server.auth.schemas import (
     LoginRequest,
     LogoutRequest,
@@ -13,6 +11,8 @@ from vaaniq.server.auth.schemas import (
     TokenResponse,
     UserResponse,
 )
+from vaaniq.server.auth.service import AuthService
+from vaaniq.server.core.database import get_db
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 

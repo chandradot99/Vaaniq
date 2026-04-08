@@ -1,10 +1,10 @@
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from vaaniq.server.auth.dependencies import CurrentUser, get_current_user
 from vaaniq.server.core.database import get_db
-from vaaniq.server.auth.dependencies import get_current_user, CurrentUser
-from vaaniq.server.models.integration import Integration
-from vaaniq.server.integrations.repository import IntegrationRepository
 from vaaniq.server.integrations.exceptions import IntegrationNotFound
+from vaaniq.server.integrations.repository import IntegrationRepository
+from vaaniq.server.models.integration import Integration
 
 
 async def valid_integration(

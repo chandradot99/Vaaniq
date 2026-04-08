@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Any
+
 from pydantic import field_validator
-from vaaniq.server.core.schemas import CustomModel
 from vaaniq.server.agents.constants import SUPPORTED_LANGUAGES
+from vaaniq.server.core.schemas import CustomModel
 
 
 class CreateAgentRequest(CustomModel):

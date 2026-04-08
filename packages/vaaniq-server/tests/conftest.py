@@ -10,9 +10,8 @@ tables are truncated after via a separate connection so there's no conflict
 with commits made during the test.
 """
 import pytest
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from vaaniq.server.core.database import Base, get_db
 from vaaniq.server.main import app
 

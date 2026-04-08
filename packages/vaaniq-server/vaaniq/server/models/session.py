@@ -1,10 +1,8 @@
 """Session model — one row per agent conversation across all channels."""
-from sqlalchemy import (
-    Column, String, Integer, DateTime, ForeignKey, Enum, func
-)
-from sqlalchemy.dialects.postgresql import JSONB
 import enum
 
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, func
+from sqlalchemy.dialects.postgresql import JSONB
 from vaaniq.server.core.database import Base
 
 

@@ -5,10 +5,10 @@ Tools:
 """
 import asyncio
 import base64
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from googleapiclient.discovery import build
+from email.mime.text import MIMEText
 
+from googleapiclient.discovery import build
 from vaaniq.tools.base import BaseTool
 from vaaniq.tools.google.auth import build_google_credentials
 

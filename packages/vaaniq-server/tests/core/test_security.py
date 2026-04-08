@@ -1,15 +1,15 @@
 """Unit tests for core/security.py — no DB required."""
 import pytest
 from jose import jwt
+from vaaniq.server.auth.config import auth_settings
 from vaaniq.server.core.security import (
-    hash_password,
-    verify_password,
     create_access_token,
     decode_token,
     generate_refresh_token,
+    hash_password,
     hash_token,
+    verify_password,
 )
-from vaaniq.server.auth.config import auth_settings
 
 
 def test_hash_password_returns_hash():

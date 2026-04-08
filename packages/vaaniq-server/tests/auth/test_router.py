@@ -1,7 +1,5 @@
 """Integration tests for auth routes — requires PostgreSQL test database."""
-import pytest
 from httpx import AsyncClient
-
 
 REGISTER_PAYLOAD = {
     "email": "user@example.com",

@@ -6,7 +6,6 @@ Trade-off: English-only (no Hindi/Hinglish). Use Deepgram for Indian languages.
 """
 
 from pipecat.services.assemblyai.stt import AssemblyAISTTService
-
 from vaaniq.voice.constants import TWILIO_SAMPLE_RATE
 
 

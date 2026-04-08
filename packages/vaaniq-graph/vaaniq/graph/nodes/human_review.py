@@ -23,7 +23,6 @@ Config:
                                approving the send)
 """
 from langgraph.types import interrupt
-
 from vaaniq.graph.nodes.base import BaseNode
 from vaaniq.graph.state import GraphSessionState
 

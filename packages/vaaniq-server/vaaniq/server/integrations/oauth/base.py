@@ -17,13 +17,13 @@ PKCE flow (required by Google and most modern providers)
 6. exchange_code(code, code_verifier) sends it to the token endpoint
 7. Provider verifies challenge == SHA256(verifier) — proves same client
 """
+import base64
 import hashlib
 import secrets
-import base64
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone, timedelta
-from jose import jwt, JWTError
+from datetime import datetime, timedelta, timezone
 
+from jose import JWTError, jwt
 from vaaniq.server.core.config import settings
 
 _STATE_ALGORITHM = "HS256"

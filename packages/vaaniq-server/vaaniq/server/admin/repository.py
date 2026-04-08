@@ -1,6 +1,5 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from vaaniq.server.models.platform_config import PlatformConfig
 
 

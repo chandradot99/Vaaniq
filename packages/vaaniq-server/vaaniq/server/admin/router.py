@@ -1,14 +1,13 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from vaaniq.server.core.database import get_db
-from vaaniq.server.admin.dependencies import require_owner, CurrentUser
+from vaaniq.server.admin.dependencies import CurrentUser, require_owner
 from vaaniq.server.admin.schemas import (
     PlatformConfigResponse,
     ProviderSchema,
     UpsertPlatformConfigRequest,
 )
 from vaaniq.server.admin.service import AdminService, get_all_schemas
+from vaaniq.server.core.database import get_db
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 

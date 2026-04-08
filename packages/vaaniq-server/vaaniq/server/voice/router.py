@@ -7,7 +7,6 @@ Calls: list call history, initiate outbound calls.
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from vaaniq.server.agents.exceptions import AgentNotFound
 from vaaniq.server.auth.dependencies import CurrentUser, get_current_user
 from vaaniq.server.core.database import get_db

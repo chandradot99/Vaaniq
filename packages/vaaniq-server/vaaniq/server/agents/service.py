@@ -1,6 +1,8 @@
 from typing import Any
+
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
+from vaaniq.server.agents.exceptions import AgentAccessDenied, AgentNotFound
 from vaaniq.server.agents.models import Agent
 from vaaniq.server.agents.repository import AgentRepository
 from vaaniq.server.agents.schemas import (
@@ -8,7 +10,6 @@ from vaaniq.server.agents.schemas import (
     CreateAgentRequest,
     UpdateAgentRequest,
 )
-from vaaniq.server.agents.exceptions import AgentNotFound, AgentAccessDenied
 
 log = structlog.get_logger()
 

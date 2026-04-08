@@ -5,8 +5,8 @@ org_keys["google"] is a dict with at minimum:
 
 Optionally also has access_token (used as initial token; auto-refreshed when expired).
 """
-from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 
 
 def build_google_credentials(org_keys: dict) -> Credentials:

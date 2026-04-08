@@ -1,9 +1,10 @@
 from datetime import timedelta
 from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from vaaniq.server.auth.constants import (
-    DEFAULT_JWT_ALGORITHM,
     DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES,
+    DEFAULT_JWT_ALGORITHM,
     DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS,
 )
 

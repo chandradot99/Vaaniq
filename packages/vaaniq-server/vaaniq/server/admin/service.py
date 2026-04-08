@@ -1,18 +1,18 @@
 import json
+
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from vaaniq.server.core.encryption import encrypt_key
-from vaaniq.server.models.platform_config import PlatformConfig
 from vaaniq.server.admin.constants import PLATFORM_PROVIDER_SCHEMAS
 from vaaniq.server.admin.exceptions import ProviderNotFound, UnknownProvider
 from vaaniq.server.admin.repository import PlatformConfigRepository
 from vaaniq.server.admin.schemas import (
+    FieldSchema,
     PlatformConfigResponse,
     ProviderSchema,
-    FieldSchema,
     UpsertPlatformConfigRequest,
 )
+from vaaniq.server.core.encryption import encrypt_key
+from vaaniq.server.models.platform_config import PlatformConfig
 
 log = structlog.get_logger()
 

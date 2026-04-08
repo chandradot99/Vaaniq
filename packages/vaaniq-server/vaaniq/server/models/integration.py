@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Text, DateTime, ForeignKey, func, Index
-from sqlalchemy.orm import Mapped, mapped_column
+
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column
 from vaaniq.server.core.database import Base
 
 

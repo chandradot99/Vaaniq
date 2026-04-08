@@ -4,7 +4,6 @@ Unit tests for GraphBuilder — uses InMemorySaver, no PostgreSQL required.
 import pytest
 from langgraph.checkpoint.memory import MemorySaver
 
-
 SIMPLE_GRAPH = {
     "entry_point": "greet",
     "nodes": [

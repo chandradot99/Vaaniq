@@ -32,7 +32,6 @@ from langchain_core.messages import (
 )
 from langchain_core.tools import StructuredTool
 from pydantic import Field, create_model
-
 from vaaniq.core.state import Message, ToolCall
 from vaaniq.graph.nodes.base import BaseNode
 from vaaniq.graph.nodes.llm import get_llm

@@ -6,12 +6,11 @@ Inbound calls arrive at a number → look up the agent → route to its graph.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
-
 from vaaniq.server.core.database import Base
 
 

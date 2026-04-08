@@ -7,9 +7,8 @@ event_type values:
   error      — unhandled exception during graph execution
   interrupt  — graph paused for user input
 """
-from sqlalchemy import Column, String, SmallInteger, Integer, Text, DateTime, func
+from sqlalchemy import Column, DateTime, Integer, SmallInteger, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
-
 from vaaniq.server.core.database import Base
 
 

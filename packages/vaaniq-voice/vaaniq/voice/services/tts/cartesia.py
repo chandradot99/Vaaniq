@@ -11,7 +11,6 @@ over transformer-based TTS at streaming synthesis.
 from typing import Optional
 
 from pipecat.services.cartesia.tts import CartesiaTTSService
-
 from vaaniq.voice.constants import TWILIO_SAMPLE_RATE
 
 # Cartesia's default voice — neutral English

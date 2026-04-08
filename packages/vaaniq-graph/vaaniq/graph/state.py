@@ -24,8 +24,8 @@ All other fields have no reducer — nodes overwrite them directly.
 """
 import operator
 from typing import Annotated, Any, Literal, Optional
-from typing_extensions import TypedDict
 
+from typing_extensions import TypedDict
 from vaaniq.core.state import Message, ToolCall
 
 

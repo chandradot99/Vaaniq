@@ -19,15 +19,14 @@ import traceback
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from vaaniq.server.auth.dependencies import get_current_user, CurrentUser
+from vaaniq.server.auth.dependencies import CurrentUser, get_current_user
 from vaaniq.server.core.config import settings
 from vaaniq.server.core.database import get_db
 from vaaniq.server.core.encryption import encrypt_key
 from vaaniq.server.integrations.oauth.base import (
     create_state_token,
-    verify_state_token,
     generate_pkce_pair,
+    verify_state_token,
 )
 from vaaniq.server.integrations.oauth.registry import OAUTH_REGISTRY
 from vaaniq.server.integrations.repository import IntegrationRepository

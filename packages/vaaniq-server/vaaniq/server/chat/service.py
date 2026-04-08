@@ -16,22 +16,21 @@ Interrupt types surfaced to the frontend:
 """
 import json
 import os
-import structlog
 from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 from uuid import UUID
 
+import structlog
 from langchain_core.callbacks.base import BaseCallbackHandler
 from langgraph.types import Command
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from vaaniq.graph.builder import GraphBuilder
 from vaaniq.server.agents.repository import AgentRepository
 from vaaniq.server.chat.checkpointer import get_checkpointer, make_thread_id
-from vaaniq.server.chat.exceptions import ChatSessionNotFound, ChatSessionEnded
+from vaaniq.server.chat.exceptions import ChatSessionEnded, ChatSessionNotFound
 from vaaniq.server.chat.repository import SessionRepository
-from vaaniq.server.chat.schemas import ChatMessage, StartChatResponse, SendMessageResponse
-from vaaniq.server.chat.tracing import TurnEventCollector, SessionEventRepository
+from vaaniq.server.chat.schemas import ChatMessage, SendMessageResponse, StartChatResponse
+from vaaniq.server.chat.tracing import SessionEventRepository, TurnEventCollector
 
 log = structlog.get_logger()
 

@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
+
 from pydantic import BaseModel, ConfigDict, model_serializer
 
 

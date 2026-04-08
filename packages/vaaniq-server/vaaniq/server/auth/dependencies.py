@@ -1,9 +1,10 @@
 from dataclasses import dataclass
+
 from fastapi import Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from vaaniq.server.core.security import decode_token
-from vaaniq.server.auth.models import User
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from vaaniq.server.auth.exceptions import InvalidToken
+from vaaniq.server.auth.models import User
+from vaaniq.server.core.security import decode_token
 
 bearer = HTTPBearer()
 

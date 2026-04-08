@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+
 from vaaniq.core.state import SessionState
 
 # State keys that nodes must never write to via save_response_to / set_variable.

@@ -33,7 +33,6 @@ from typing import Callable, Optional, Union
 import structlog
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
-
 from pipecat.frames.frames import (
     EndFrame,
     Frame,

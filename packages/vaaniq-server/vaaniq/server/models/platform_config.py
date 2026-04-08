@@ -9,10 +9,10 @@ config:      Plain JSONB — non-secrets returned in API responses (client_id, r
 """
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Text, Boolean, DateTime, func
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import JSONB
 
+from sqlalchemy import Boolean, DateTime, String, Text, func
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column
 from vaaniq.server.core.database import Base
 
 

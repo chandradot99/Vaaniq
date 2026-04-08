@@ -16,11 +16,10 @@ Config:
 On non-2xx response the node sets state["error"] and adds an agent message
 to state["messages"] so the error is visible in the chat/test panel.
 """
-import structlog
 import httpx
-
-from vaaniq.graph.nodes.base import BaseNode, PROTECTED_STATE_KEYS
+import structlog
 from vaaniq.core.state import SessionState
+from vaaniq.graph.nodes.base import PROTECTED_STATE_KEYS, BaseNode
 from vaaniq.graph.resolver import TemplateResolver
 
 log = structlog.get_logger()
@@ -55,7 +54,9 @@ class HttpRequestNode(BaseNode):
                 response.raise_for_status()
         except httpx.HTTPStatusError as exc:
             error_msg = f"HTTP {exc.response.status_code} from {url}: {exc.response.text[:300]}"
-            log.warning("http_request_http_error", url=url, status=exc.response.status_code, session_id=state.get("session_id"))
+            log.warning(
+                "http_request_http_error", url=url, status=exc.response.status_code, session_id=state.get("session_id")
+            )
             return {"error": error_msg}
         except httpx.RequestError as exc:
             error_msg = f"Request to {url} failed: {exc}"

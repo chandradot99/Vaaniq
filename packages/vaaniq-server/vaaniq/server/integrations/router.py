@@ -1,17 +1,16 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from vaaniq.server.auth.dependencies import CurrentUser, get_current_user
 from vaaniq.server.core.database import get_db
-from vaaniq.server.auth.dependencies import get_current_user, CurrentUser
 from vaaniq.server.integrations.dependencies import valid_integration
-from vaaniq.server.models.integration import Integration
-from vaaniq.server.integrations.service import IntegrationService
+from vaaniq.server.integrations.oauth import oauth_router
 from vaaniq.server.integrations.schemas import (
     CreateIntegrationRequest,
     IntegrationResponse,
     TestIntegrationResponse,
 )
-from vaaniq.server.integrations.oauth import oauth_router
+from vaaniq.server.integrations.service import IntegrationService
+from vaaniq.server.models.integration import Integration
 
 router = APIRouter(prefix="/v1/integrations", tags=["integrations"])
 router.include_router(oauth_router)

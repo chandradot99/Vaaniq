@@ -3,15 +3,14 @@ Tests for the voice API endpoints.
 Uses mock DB session — no real Postgres required.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import FastAPI
-from httpx import AsyncClient, ASGITransport
 
-from vaaniq.server.voice.router import router
+import pytest
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
 from vaaniq.server.auth.dependencies import get_current_user
 from vaaniq.server.core.database import get_db
-
+from vaaniq.server.voice.router import router
 
 # ── App + dependency overrides ────────────────────────────────────────────────
 
@@ -102,8 +101,9 @@ async def test_list_phone_numbers_empty(client):
 
 @pytest.mark.asyncio
 async def test_list_phone_numbers_returns_items(client):
-    from vaaniq.server.voice.schemas import PhoneNumberResponse
     from datetime import datetime, timezone
+
+    from vaaniq.server.voice.schemas import PhoneNumberResponse
 
     pn = PhoneNumberResponse(
         id="pn-1", org_id="org-1", agent_id="agent-1",
@@ -123,8 +123,9 @@ async def test_list_phone_numbers_returns_items(client):
 
 @pytest.mark.asyncio
 async def test_add_phone_number_success(client):
-    from vaaniq.server.voice.schemas import PhoneNumberResponse
     from datetime import datetime, timezone
+
+    from vaaniq.server.voice.schemas import PhoneNumberResponse
 
     pn = PhoneNumberResponse(
         id="pn-1", org_id="org-1", agent_id="agent-1",

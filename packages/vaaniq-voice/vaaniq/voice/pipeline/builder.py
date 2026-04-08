@@ -16,17 +16,16 @@ conversation memory lives in LangGraph's MemorySaver checkpointer — not here.
 
 from __future__ import annotations
 
-import structlog
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
+import structlog
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
 )
-
 from vaaniq.voice.constants import TWILIO_SAMPLE_RATE
 from vaaniq.voice.pipeline.context import VoiceCallContext
 from vaaniq.voice.services.langgraph_service import VaaniqLangGraphService

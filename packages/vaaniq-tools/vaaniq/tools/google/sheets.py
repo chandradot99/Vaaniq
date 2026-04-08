@@ -5,8 +5,8 @@ Tools:
     google_sheets_append_row  — append a row of values to a sheet
 """
 import asyncio
-from googleapiclient.discovery import build
 
+from googleapiclient.discovery import build
 from vaaniq.tools.base import BaseTool
 from vaaniq.tools.google.auth import build_google_credentials
 

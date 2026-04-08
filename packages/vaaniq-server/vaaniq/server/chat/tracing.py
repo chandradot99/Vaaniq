@@ -20,7 +20,6 @@ from typing import Any
 import structlog
 from langchain_core.callbacks.base import BaseCallbackHandler
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from vaaniq.server.models.session_event import SessionEvent
 
 log = structlog.get_logger()

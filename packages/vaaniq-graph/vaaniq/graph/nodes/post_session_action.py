@@ -17,9 +17,8 @@ The task dispatcher is injected via org_keys["_task_dispatcher"] at
 build time by vaaniq-server. If not present, actions are logged and skipped.
 """
 import structlog
-
-from vaaniq.graph.nodes.base import BaseNode
 from vaaniq.core.state import SessionState
+from vaaniq.graph.nodes.base import BaseNode
 
 log = structlog.get_logger()
 

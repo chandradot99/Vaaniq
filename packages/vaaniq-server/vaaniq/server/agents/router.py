@@ -1,16 +1,16 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from vaaniq.server.core.database import get_db
-from vaaniq.server.auth.dependencies import get_current_user, CurrentUser
 from vaaniq.server.agents.dependencies import valid_agent
 from vaaniq.server.agents.models import Agent
-from vaaniq.server.agents.service import AgentService
 from vaaniq.server.agents.schemas import (
     AgentResponse,
     CreateAgentRequest,
     UpdateAgentRequest,
     UpdateGraphRequest,
 )
+from vaaniq.server.agents.service import AgentService
+from vaaniq.server.auth.dependencies import CurrentUser, get_current_user
+from vaaniq.server.core.database import get_db
 
 router = APIRouter(prefix="/v1/agents", tags=["agents"])
 

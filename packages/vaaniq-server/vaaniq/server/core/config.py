@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Optional
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Resolves to packages/vaaniq-server/.env regardless of working directory

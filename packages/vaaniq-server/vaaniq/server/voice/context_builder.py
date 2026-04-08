@@ -12,21 +12,21 @@ and return a fully populated VoiceCallContext for the pipeline builder.
 """
 
 import json
+
 import structlog
 from fastapi import WebSocket
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from vaaniq.server.admin import platform_cache
 from vaaniq.server.agents.repository import AgentRepository
 from vaaniq.server.integrations.repository import IntegrationRepository
 from vaaniq.server.integrations.service import PostgresCredentialStore
-from vaaniq.server.voice.repository import PhoneNumberRepository
-from vaaniq.server.webhooks.repository import SessionRepository
 from vaaniq.server.voice.exceptions import (
     AgentNotConfigured,
     SessionNotFound,
     TwilioHandshakeError,
 )
+from vaaniq.server.voice.repository import PhoneNumberRepository
+from vaaniq.server.webhooks.repository import SessionRepository
 from vaaniq.voice.pipeline.context import VoiceCallContext
 
 log = structlog.get_logger()

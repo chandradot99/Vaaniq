@@ -1,9 +1,10 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, DateTime, ForeignKey, func, UniqueConstraint
+
+from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
-from vaaniq.server.core.database import Base
 from vaaniq.server.auth.constants import OrgRole
+from vaaniq.server.core.database import Base
 
 
 class User(Base):

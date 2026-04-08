@@ -2,10 +2,9 @@
 Integration tests for /v1/api-keys — requires PostgreSQL vaaniq_test database.
 LLM provider HTTP calls are mocked via unittest.mock.
 """
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from httpx import AsyncClient
 
+from httpx import AsyncClient
 
 # ── Create ────────────────────────────────────────────────────────────────────
 

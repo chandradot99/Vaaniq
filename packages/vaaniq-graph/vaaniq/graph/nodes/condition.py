@@ -11,10 +11,10 @@ Config:
     provider       (str)   optional — see llm.py
     model          (str)   optional — see llm.py
 """
-import structlog
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from typing import TypedDict
 
+import structlog
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from vaaniq.graph.nodes.base import BaseNode
 from vaaniq.graph.nodes.llm import get_llm
 from vaaniq.graph.state import GraphSessionState

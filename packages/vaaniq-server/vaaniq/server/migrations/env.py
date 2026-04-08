@@ -1,17 +1,18 @@
 import asyncio
 from logging.config import fileConfig
+
+from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
-from alembic import context
-from vaaniq.server.core.config import settings
-from vaaniq.server.core.database import Base
+from vaaniq.server.agents import models as agent_models  # noqa: F401
 
 # Import all models so Alembic can detect them
 from vaaniq.server.auth import models as auth_models  # noqa: F401
-from vaaniq.server.agents import models as agent_models  # noqa: F401
+from vaaniq.server.core.config import settings
+from vaaniq.server.core.database import Base
 from vaaniq.server.models import integration as integration_model  # noqa: F401
-from vaaniq.server.models import session as session_model  # noqa: F401
 from vaaniq.server.models import platform_config as platform_config_model  # noqa: F401
+from vaaniq.server.models import session as session_model  # noqa: F401
 from vaaniq.server.voice import models as voice_models  # noqa: F401
 
 config = context.config

@@ -22,11 +22,26 @@ vaaniq-channels = { workspace = true }
 vaaniq-server   = { workspace = true }
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# LLM prompt strings contain intentionally long lines
+"packages/vaaniq-graph/vaaniq/graph/nodes/collect_data.py" = ["E501"]
+# Admin constants: long default config values
+"packages/vaaniq-server/vaaniq/server/admin/constants.py" = ["E501"]
+# Tracing: long span/attribute names are part of the OTel schema
+"packages/vaaniq-server/vaaniq/server/chat/tracing.py" = ["E501"]
+# Chat service: long log messages and structured data
+"packages/vaaniq-server/vaaniq/server/chat/service.py" = ["E501"]
+# Tool implementations: long URLs and API strings
+"packages/vaaniq-tools/vaaniq/tools/google/calendar.py" = ["E501"]
+# Test files: long assertion messages and test data are acceptable
+"packages/*/tests/**/*.py" = ["E501"]
+"packages/*/tests/*.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"

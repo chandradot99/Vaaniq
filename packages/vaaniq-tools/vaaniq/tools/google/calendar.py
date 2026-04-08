@@ -5,9 +5,9 @@ Tools:
     google_calendar_create_event  — create a new event
 """
 import asyncio
-from datetime import datetime, timezone, timedelta
-from googleapiclient.discovery import build
+from datetime import datetime, timedelta, timezone
 
+from googleapiclient.discovery import build
 from vaaniq.tools.base import BaseTool
 from vaaniq.tools.google.auth import build_google_credentials
 
@@ -150,7 +150,8 @@ class GoogleCalendarCreateEvent(BaseTool):
         end_raw = inputs.get("end_time") or None  # treat empty string as missing
 
         if start_raw:
-            from datetime import datetime as dt, timedelta
+            from datetime import datetime as dt
+            from datetime import timedelta
             from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
             tz_name = inputs.get("timezone") or "UTC"

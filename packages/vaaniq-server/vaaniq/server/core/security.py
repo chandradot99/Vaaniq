@@ -2,6 +2,7 @@ import hashlib
 import secrets
 from datetime import datetime, timezone
 from typing import Any, Optional
+
 from jose import JWTError, jwt
 from pwdlib import PasswordHash
 from pwdlib.hashers.argon2 import Argon2Hasher

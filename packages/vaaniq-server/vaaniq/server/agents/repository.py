@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime, timezone
 from typing import Any
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 from vaaniq.server.agents.models import Agent
 
 

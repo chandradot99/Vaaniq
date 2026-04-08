@@ -1,10 +1,10 @@
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from vaaniq.server.core.database import get_db
-from vaaniq.server.auth.dependencies import get_current_user, CurrentUser
+from vaaniq.server.agents.exceptions import AgentAccessDenied, AgentNotFound
 from vaaniq.server.agents.models import Agent
 from vaaniq.server.agents.repository import AgentRepository
-from vaaniq.server.agents.exceptions import AgentNotFound, AgentAccessDenied
+from vaaniq.server.auth.dependencies import CurrentUser, get_current_user
+from vaaniq.server.core.database import get_db
 
 
 async def valid_agent(

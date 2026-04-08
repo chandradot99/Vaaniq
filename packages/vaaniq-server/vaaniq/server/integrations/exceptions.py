@@ -1,4 +1,4 @@
-from vaaniq.server.exceptions import NotFound, Conflict
+from vaaniq.server.exceptions import Conflict, NotFound
 
 
 class IntegrationNotFound(NotFound):

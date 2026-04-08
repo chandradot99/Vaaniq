@@ -5,9 +5,9 @@ We mock the WebSocket and DB calls so no real Twilio or PostgreSQL is needed.
 """
 
 import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from vaaniq.server.voice.context_builder import (
     _read_twilio_handshake,
     _resolve_provider,
@@ -18,7 +18,6 @@ from vaaniq.server.voice.exceptions import (
     SessionNotFound,
     TwilioHandshakeError,
 )
-
 
 # ── _read_twilio_handshake ────────────────────────────────────────────────────
 

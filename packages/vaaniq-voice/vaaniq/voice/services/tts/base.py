@@ -18,10 +18,10 @@ from vaaniq.voice.exceptions import MissingAPIKeyError, ProviderNotFoundError
 
 
 def _build_registry() -> dict[str, Callable]:
+    from vaaniq.voice.services.tts.azure import create_azure_tts
     from vaaniq.voice.services.tts.cartesia import create_cartesia_tts
     from vaaniq.voice.services.tts.deepgram import create_deepgram_tts
     from vaaniq.voice.services.tts.elevenlabs import create_elevenlabs_tts
-    from vaaniq.voice.services.tts.azure import create_azure_tts
 
     return {
         "cartesia": create_cartesia_tts,

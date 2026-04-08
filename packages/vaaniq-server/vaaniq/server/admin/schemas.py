@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
-from pydantic import BaseModel
 
+from pydantic import BaseModel
 from vaaniq.server.core.schemas import CustomModel
 
 
