@@ -75,7 +75,7 @@ jobs:
         run: uv sync
 
       - name: Lint
-        run: uv run ruff check packages/vaaniq-server/
+        run: uvx ruff check packages/vaaniq-server/
 
       - name: Check migrations
         env:
