@@ -81,7 +81,7 @@ jobs:
         env:
           DATABASE_URL: ${{ vars.CI_DATABASE_URL }}
           SECRET_KEY: ${{ secrets.CI_SECRET_KEY }}
-          FERNET_KEY: ""
+          FERNET_KEY: ${{ secrets.CI_FERNET_KEY }}
         run: uv run alembic -c packages/vaaniq-server/alembic.ini upgrade head
 
       - name: Test
