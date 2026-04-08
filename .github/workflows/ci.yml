@@ -34,7 +34,7 @@ jobs:
         run: uvx ruff check packages/${{ matrix.package }}/
 
       - name: Test
-        run: uv run --package ${{ matrix.package }} pytest packages/${{ matrix.package }}/tests/ -v
+        run: uv run --package ${{ matrix.package }} pytest packages/${{ matrix.package }}/tests/ -v || [ $? -eq 5 ]
 
   test-server:
     runs-on: ubuntu-latest
