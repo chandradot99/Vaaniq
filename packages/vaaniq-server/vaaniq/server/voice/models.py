@@ -8,7 +8,7 @@ Inbound calls arrive at a number → look up the agent → route to its graph.
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, text
+from sqlalchemy import DateTime, ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -18,7 +18,14 @@ from vaaniq.server.core.database import Base
 class PhoneNumber(Base):
     __tablename__ = "phone_numbers"
     __table_args__ = (
-        UniqueConstraint("number", name="uq_phone_numbers_number"),
+        # Partial unique index — only active (non-deleted) rows must have unique numbers.
+        # Soft-deleted rows are excluded so the same number can be re-added after deletion.
+        Index(
+            "uq_phone_numbers_number_active",
+            "number",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
     )
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))

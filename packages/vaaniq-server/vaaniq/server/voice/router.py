@@ -25,6 +25,7 @@ from vaaniq.server.voice.schemas import (
     OutboundCallResponse,
     PhoneNumberResponse,
     ReassignPhoneNumberRequest,
+    TwilioAvailableNumber,
     UpdateVoiceConfigRequest,
 )
 from vaaniq.server.voice.service import VoiceService
@@ -33,6 +34,27 @@ router = APIRouter(prefix="/v1/voice", tags=["voice"])
 
 
 # ── Phone Numbers ─────────────────────────────────────────────────────────────
+
+@router.get("/twilio/numbers", response_model=list[TwilioAvailableNumber])
+async def list_twilio_numbers(
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[TwilioAvailableNumber]:
+    """
+    Fetch all purchased phone numbers from the org's Twilio account.
+    Already-imported numbers are marked with already_imported=true.
+    Used by the frontend number picker — no manual E.164 entry needed.
+    """
+    try:
+        return await VoiceService(db).list_twilio_numbers(current.org_id)
+    except TwilioCredentialsMissing:
+        raise HTTPException(
+            status_code=422,
+            detail="Twilio credentials not configured. Add a Twilio integration first.",
+        )
+    except OutboundCallFailed as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
 
 @router.get("/phone-numbers", response_model=list[PhoneNumberResponse])
 async def list_phone_numbers(

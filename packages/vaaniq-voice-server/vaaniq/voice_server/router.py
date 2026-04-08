@@ -146,8 +146,18 @@ async def twilio_voice_stream(
 
         try:
             checkpointer = get_checkpointer()
+            log.info(
+                "voice_checkpointer_resolved",
+                session_id=session_id,
+                checkpointer_type=type(checkpointer).__name__,
+            )
         except RuntimeError:
             checkpointer = None  # local dev without Postgres — MemorySaver fallback
+            log.warning(
+                "voice_checkpointer_fallback",
+                session_id=session_id,
+                reason="PostgresSaver not initialised — using MemorySaver (dev mode)",
+            )
 
         await run_voice_pipeline(
             websocket=websocket,

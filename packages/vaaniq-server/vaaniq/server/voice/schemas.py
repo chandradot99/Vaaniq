@@ -53,6 +53,15 @@ class AddPhoneNumberRequest(CustomModel):
         return v
 
 
+class TwilioAvailableNumber(CustomModel):
+    """A Twilio number on the org's account that may or may not be imported yet."""
+    number: str              # E.164 e.g. +14155551234
+    sid: str                 # Twilio PhoneNumberSid (PN...)
+    friendly_name: str | None
+    capabilities: dict       # {"voice": true, "sms": true, "mms": false}
+    already_imported: bool   # True if this org already has this number as a pipeline
+
+
 class ReassignPhoneNumberRequest(CustomModel):
     agent_id: str
 

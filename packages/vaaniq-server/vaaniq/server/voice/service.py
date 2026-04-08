@@ -32,6 +32,7 @@ from vaaniq.server.voice.schemas import (
     OutboundCallResponse,
     PhoneNumberResponse,
     ReassignPhoneNumberRequest,
+    TwilioAvailableNumber,
     UpdateVoiceConfigRequest,
     VoiceConfig,
 )
@@ -270,6 +271,52 @@ class VoiceService:
             call_sid=call_sid,
             status="queued",
         )
+
+    async def list_twilio_numbers(self, org_id: str) -> list[TwilioAvailableNumber]:
+        """
+        Fetch all purchased numbers from the org's Twilio account and mark
+        which ones are already imported as pipelines.
+        """
+        import httpx
+
+        account_sid, auth_token = await self._get_twilio_creds(org_id)
+
+        url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/IncomingPhoneNumbers.json"
+        params = {"PageSize": "100"}
+
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.get(url, params=params, auth=(account_sid, auth_token))
+
+        if response.status_code != 200:
+            log.error(
+                "twilio_list_numbers_failed",
+                status=response.status_code,
+                body=response.text[:300],
+            )
+            raise OutboundCallFailed(
+                f"Twilio returned HTTP {response.status_code}: {response.text[:200]}"
+            )
+
+        # Build set of already-imported numbers for O(1) lookup
+        existing = await self._phone_repo.list_by_org(org_id)
+        imported_numbers = {pn.number for pn in existing}
+
+        results = []
+        for item in response.json().get("incoming_phone_numbers", []):
+            cap = item.get("capabilities", {})
+            results.append(TwilioAvailableNumber(
+                number=item["phone_number"],
+                sid=item["sid"],
+                friendly_name=item.get("friendly_name"),
+                capabilities={
+                    "voice": cap.get("voice", False),
+                    "sms": cap.get("sms", False),
+                    "mms": cap.get("mms", False),
+                },
+                already_imported=item["phone_number"] in imported_numbers,
+            ))
+
+        return results
 
     async def _get_twilio_creds(self, org_id: str) -> tuple[str, str]:
         """

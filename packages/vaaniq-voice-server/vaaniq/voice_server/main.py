@@ -48,6 +48,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     #    State written during voice calls survives server restarts and is
     #    readable by any machine in a multi-instance deployment.
     await setup_checkpointer()
+    log.info("checkpointer_ready", checkpointer_type="AsyncPostgresSaver")
 
     async with async_session_factory() as db:
         # 2. Load platform config (Twilio creds, webhook URLs) into memory cache.
