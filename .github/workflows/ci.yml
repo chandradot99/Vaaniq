@@ -87,6 +87,7 @@ jobs:
       - name: Test
         env:
           DATABASE_URL: postgresql+asyncpg://vaaniq:vaaniq@localhost:5432/vaaniq
+          TEST_DATABASE_URL: postgresql+asyncpg://vaaniq:vaaniq@localhost:5432/vaaniq
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: test-secret
           FERNET_KEY: ""
