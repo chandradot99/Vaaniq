@@ -17,6 +17,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from pipecat.frames.frames import (
     EndFrame,
+    InterruptionTaskFrame,
     LLMContextFrame,
     LLMFullResponseEndFrame,
     LLMFullResponseStartFrame,
@@ -27,6 +28,7 @@ from pipecat.processors.frame_processor import FrameDirection
 
 from vaaniq.voice.services.langgraph_service import (
     VaaniqLangGraphService,
+    _extract_interrupt_text,
     _extract_user_text,
     _split_at_sentence_boundaries,
 )
@@ -58,10 +60,31 @@ INITIAL_STATE = {
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _make_state_snapshot(values: dict | None = None) -> MagicMock:
+def _make_interrupt(content: str | None = None) -> MagicMock:
+    """Mock LangGraph Interrupt object."""
+    ivr = MagicMock()
+    if content is not None:
+        ivr.value = {"type": "collect_question", "content": content, "field": "name"}
+    else:
+        ivr.value = {"type": "user_input", "waiting": True}  # no "content" key
+    return ivr
+
+
+def _make_task(interrupts: list | None = None) -> MagicMock:
+    """Mock LangGraph PregelTask object."""
+    task = MagicMock()
+    task.interrupts = interrupts or []
+    return task
+
+
+def _make_state_snapshot(
+    values: dict | None = None,
+    tasks: list | None = None,
+) -> MagicMock:
     """Mock StateSnapshot returned by graph.aget_state."""
     snap = MagicMock()
     snap.values = values or {}
+    snap.tasks = tasks or []
     return snap
 
 
@@ -426,6 +449,98 @@ async def test_end_session_pushes_end_frame():
     assert any(isinstance(f, EndFrame) for f in frames)
 
 
+# ── _extract_interrupt_text ───────────────────────────────────────────────────
+
+def test_extract_interrupt_text_from_collect_data():
+    """collect_data interrupt with 'content' key should be extracted."""
+    task = _make_task(interrupts=[_make_interrupt("May I have your name?")])
+    snap = _make_state_snapshot(tasks=[task])
+    assert _extract_interrupt_text(snap) == "May I have your name?"
+
+
+def test_extract_interrupt_text_ignores_user_input_interrupt():
+    """inbound_message interrupt (no 'content' key) should return empty string."""
+    task = _make_task(interrupts=[_make_interrupt(content=None)])
+    snap = _make_state_snapshot(tasks=[task])
+    assert _extract_interrupt_text(snap) == ""
+
+
+def test_extract_interrupt_text_no_tasks():
+    """No tasks in snapshot → empty string."""
+    snap = _make_state_snapshot(tasks=[])
+    assert _extract_interrupt_text(snap) == ""
+
+
+def test_extract_interrupt_text_none_snapshot():
+    """None snapshot → empty string, no crash."""
+    assert _extract_interrupt_text(None) == ""
+
+
+# ── collect_data question spoken from interrupt (the bug fix) ─────────────────
+
+@pytest.mark.asyncio
+async def test_collect_data_question_spoken_from_interrupt_not_greeting():
+    """
+    Bug: collect_data suspends at interrupt() before writing its question to
+    state["messages"]. The fallback used to scan state["messages"] and replay
+    the old greeting. Now it reads from the interrupt payload instead.
+    """
+    # State has the old greeting from the start node only (no collect_data question yet)
+    state_with_old_greeting = {
+        "session_ended": False,
+        "messages": [
+            {"role": "agent", "content": "Hello! I'm your Google Assistant."},
+        ],
+    }
+    # Active interrupt from collect_data asking for the user's name
+    collect_task = _make_task(interrupts=[_make_interrupt("What is your name?")])
+    snap = _make_state_snapshot(values=state_with_old_greeting, tasks=[collect_task])
+
+    graph = MagicMock()
+    graph.astream_events = _async_iter(_empty_stream())   # no LLM tokens (collect_data is internal)
+    graph.aget_state = AsyncMock(return_value=snap)
+
+    svc = _make_service(graph)
+    frames = _pushed_frames(svc)
+
+    await svc.process_frame(LLMContextFrame(context=_ctx()), FrameDirection.DOWNSTREAM)
+
+    combined = " ".join(f.text for f in frames if isinstance(f, LLMTextFrame))
+    assert "What is your name?" in combined
+    assert "Hello! I'm your Google Assistant." not in combined
+
+
+@pytest.mark.asyncio
+async def test_start_greeting_still_works_with_inbound_message_interrupt():
+    """
+    Turn 0: start node writes greeting to state, inbound_message suspends.
+    The interrupt has no 'content', so fallback must use state["messages"] → greeting.
+    """
+    state_with_greeting = {
+        "session_ended": False,
+        "messages": [
+            {"role": "agent", "content": "Hello! How can I help you today?"},
+        ],
+    }
+    # inbound_message interrupt — no "content" key
+    inbound_task = _make_task(interrupts=[_make_interrupt(content=None)])
+    snap = _make_state_snapshot(values=state_with_greeting, tasks=[inbound_task])
+
+    graph = MagicMock()
+    graph.astream_events = _async_iter(_empty_stream())
+    graph.aget_state = AsyncMock(return_value=snap)
+
+    svc = _make_service(graph)
+    frames = _pushed_frames(svc)
+
+    await svc.process_frame(LLMContextFrame(context=_ctx()), FrameDirection.DOWNSTREAM)
+
+    combined = " ".join(f.text for f in frames if isinstance(f, LLMTextFrame))
+    # _split_sentences splits at "!" — check for both parts
+    assert "Hello!" in combined
+    assert "How can I help you today?" in combined
+
+
 # ── Session ended / error state ───────────────────────────────────────────────
 
 @pytest.mark.asyncio
@@ -552,3 +667,97 @@ async def test_subsequent_turn_passes_user_text():
     assert len(text_frames) == 1
     assert "Sure, I can help." in text_frames[0].text
     assert svc._turn == 2
+
+
+# ── Stale interruption guard ──────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_stale_interruption_dropped_after_graph_turn():
+    """
+    InterruptionTaskFrame queued DURING a graph turn must be dropped.
+
+    Pattern: collect_data takes 5-8s (LLM extraction). During this silence
+    the user speaks again → InterruptionTaskFrame queues up behind the
+    LLMContextFrame. If forwarded, it would immediately cut off the
+    re-ask question we just pushed to TTS. We must drop it.
+    """
+    graph = _make_graph(stream=_empty_stream(), state_values={
+        "session_ended": False,
+        "messages": [{"role": "agent", "content": "May I have your name?"}],
+    })
+    svc = _make_service(graph)
+    frames = _pushed_frames(svc)
+
+    # Step 1: process graph turn (simulates collect_data asking a question)
+    await svc.process_frame(LLMContextFrame(context=_ctx()), FrameDirection.DOWNSTREAM)
+    assert svc._discard_next_interruption is True
+
+    # Step 2: the stale interruption arrives immediately after
+    await svc.process_frame(InterruptionTaskFrame(), FrameDirection.DOWNSTREAM)
+
+    # The InterruptionTaskFrame must NOT have been forwarded (not in pushed frames)
+    assert not any(isinstance(f, InterruptionTaskFrame) for f in frames)
+    assert svc._discard_next_interruption is False  # flag reset
+
+
+@pytest.mark.asyncio
+async def test_genuine_interruption_forwarded_after_non_context_frame():
+    """
+    InterruptionTaskFrame that arrives after a non-LLMContextFrame is genuine
+    (user interrupted the bot while it was speaking) — must be forwarded.
+    """
+    svc = _make_service()
+    frames = _pushed_frames(svc)
+
+    # No graph turn has run — _discard_next_interruption stays False
+    await svc.process_frame(InterruptionTaskFrame(), FrameDirection.DOWNSTREAM)
+
+    assert any(isinstance(f, InterruptionTaskFrame) for f in frames)
+
+
+@pytest.mark.asyncio
+async def test_only_first_interruption_after_turn_is_dropped():
+    """
+    Only the FIRST InterruptionTaskFrame after a graph turn is discarded.
+    A second one (user spoke again after the agent's response) is genuine.
+    """
+    graph = _make_graph(stream=_empty_stream(), state_values={
+        "session_ended": False,
+        "messages": [{"role": "agent", "content": "What is your email?"}],
+    })
+    svc = _make_service(graph)
+    frames = _pushed_frames(svc)
+
+    await svc.process_frame(LLMContextFrame(context=_ctx()), FrameDirection.DOWNSTREAM)
+
+    # First interruption: stale → dropped
+    await svc.process_frame(InterruptionTaskFrame(), FrameDirection.DOWNSTREAM)
+    assert not any(isinstance(f, InterruptionTaskFrame) for f in frames)
+
+    # Second interruption: genuine (user spoke after hearing the question) → forwarded
+    await svc.process_frame(InterruptionTaskFrame(), FrameDirection.DOWNSTREAM)
+    assert any(isinstance(f, InterruptionTaskFrame) for f in frames)
+
+
+@pytest.mark.asyncio
+async def test_non_interruption_frame_resets_discard_flag():
+    """
+    A non-interruption frame (e.g., a TextFrame) resets the discard flag,
+    so a subsequent InterruptionTaskFrame is treated as genuine.
+    """
+    graph = _make_graph(stream=_empty_stream(), state_values={
+        "session_ended": False, "messages": [],
+    })
+    svc = _make_service(graph)
+    frames = _pushed_frames(svc)
+
+    await svc.process_frame(LLMContextFrame(context=_ctx()), FrameDirection.DOWNSTREAM)
+    assert svc._discard_next_interruption is True
+
+    # A non-interruption frame resets the flag
+    await svc.process_frame(TextFrame(text="irrelevant"), FrameDirection.DOWNSTREAM)
+    assert svc._discard_next_interruption is False
+
+    # Now the interruption is genuine
+    await svc.process_frame(InterruptionTaskFrame(), FrameDirection.DOWNSTREAM)
+    assert any(isinstance(f, InterruptionTaskFrame) for f in frames)

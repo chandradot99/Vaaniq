@@ -46,7 +46,11 @@ DEEPGRAM_ENDPOINTING_MS: int = 100
 # Seconds without a BotSpeakingFrame or UserSpeakingFrame before Pipecat
 # marks the pipeline idle and cancels it. After session_ended the Twilio
 # WebSocket may linger; this bound ensures finalization runs promptly.
-PIPELINE_IDLE_TIMEOUT_SECS: float = 10.0
+#
+# 30s gives collect_data flows enough headroom: each field takes ~5-8s
+# (LLM extraction call + re-ask) so a 6-field form needs up to ~50s.
+# The previous 10s was too aggressive for multi-field voice collection.
+PIPELINE_IDLE_TIMEOUT_SECS: float = 30.0
 
 # Seconds to wait for the pipeline runner to flush cleanly before force-
 # cancelling it in the finally block of run_voice_pipeline().

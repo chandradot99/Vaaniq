@@ -37,6 +37,7 @@ from langgraph.types import Command
 from pipecat.frames.frames import (
     EndFrame,
     Frame,
+    InterruptionTaskFrame,
     LLMContextFrame,
     LLMFullResponseEndFrame,
     LLMFullResponseStartFrame,
@@ -77,6 +78,26 @@ def _extract_agent_text(state: dict) -> str:
     for msg in reversed(messages):
         if isinstance(msg, dict) and msg.get("role") == "agent":
             return msg.get("content", "")
+    return ""
+
+
+def _extract_interrupt_text(state_snapshot) -> str:
+    """Return the question text from an active interrupt, if any.
+
+    When collect_data (or any node) calls interrupt(), the interrupt value is
+    stored in the checkpoint tasks — not in state["messages"] (the local
+    messages_to_add list only commits to state when the node completes).
+    Checking here lets us speak the question instead of replaying stale messages.
+
+    Returns empty string if the graph is not at an interrupt with speakable content.
+    """
+    if not state_snapshot:
+        return ""
+    for task in (state_snapshot.tasks or []):
+        for ivr in (task.interrupts or []):
+            value = getattr(ivr, "value", None) or {}
+            if isinstance(value, dict) and "content" in value:
+                return str(value["content"])
     return ""
 
 
@@ -124,6 +145,17 @@ class VaaniqLangGraphService(FrameProcessor):
         self._graph_config = graph_config
         self._get_turn_callbacks = get_turn_callbacks
         self._turn: int = 0
+        # Set to True after a graph turn completes to discard the next
+        # InterruptionTaskFrame if it was queued while the graph was processing.
+        #
+        # Problem: collect_data takes 5-8s per field (LLM extraction call).
+        # During this silence, the user speaks again → InterruptionTaskFrame
+        # queues up behind the LLMContextFrame. After the graph turn finishes
+        # and pushes the re-ask LLMTextFrames, Pipecat immediately processes
+        # the stale InterruptionTaskFrame, telling TTS to stop — the user hears
+        # nothing. Setting this flag drops that one stale interruption so the
+        # re-ask actually plays.
+        self._discard_next_interruption: bool = False
 
         # Pre-compute internal node ids to filter from the token stream.
         # These nodes use LLMs for routing/review — their tokens must not reach TTS.
@@ -140,7 +172,24 @@ class VaaniqLangGraphService(FrameProcessor):
 
         if isinstance(frame, LLMContextFrame):
             await self._run_graph_turn(frame.context)
+            # Signal that the next interruption frame (if any) is stale —
+            # it was queued while the graph was processing (5-8s silence) and
+            # would immediately cut off the response we just pushed to TTS.
+            self._discard_next_interruption = True
+
+        elif isinstance(frame, InterruptionTaskFrame) and self._discard_next_interruption:
+            # Drop the stale interruption. Reset flag so subsequent (genuine)
+            # interruptions — where the user speaks AFTER hearing the response —
+            # are forwarded normally.
+            self._discard_next_interruption = False
+            log.info(
+                "langgraph_stale_interruption_dropped",
+                thread_id=self._thread_id,
+                turn=self._turn,
+            )
+
         else:
+            self._discard_next_interruption = False
             await self.push_frame(frame, direction)
 
     # ── Turn execution ────────────────────────────────────────────────────────
@@ -191,7 +240,7 @@ class VaaniqLangGraphService(FrameProcessor):
             # Get final state for session_ended check and non-LLM fallback
             state_snapshot = await self._graph.aget_state(self._base_config)
             final_state = state_snapshot.values if state_snapshot else {}
-            session_ended = await self._handle_stream_result(final_state, streamed_tokens)
+            session_ended = await self._handle_stream_result(state_snapshot, final_state, streamed_tokens)
 
         except Exception:
             log.exception("langgraph_turn_error", thread_id=self._thread_id, turn=self._turn)
@@ -247,7 +296,7 @@ class VaaniqLangGraphService(FrameProcessor):
 
         return config
 
-    async def _handle_stream_result(self, final_state: dict, streamed_tokens: bool) -> bool:
+    async def _handle_stream_result(self, state_snapshot, final_state: dict, streamed_tokens: bool) -> bool:
         """Process final state after streaming completes. Returns True if session should end."""
         if final_state.get("error"):
             log.error(
@@ -258,11 +307,27 @@ class VaaniqLangGraphService(FrameProcessor):
             )
             return True
 
-        # Fallback for nodes that don't call an LLM (e.g. end_session farewell message):
-        # no on_chat_model_stream events fire, so push agent text from state instead.
+        # Fallback for nodes that don't call an LLM (e.g. collect_data questions,
+        # end_session farewell, start greeting): no on_chat_model_stream events fire.
+        #
+        # Priority order:
+        #   1. Active interrupt with "content" — the question collect_data is asking.
+        #      collect_data buffers its Q&A in a local list (messages_to_add) and only
+        #      writes to state["messages"] when ALL fields are done. So during collection
+        #      the question lives only in the interrupt payload, not in state.
+        #   2. Last agent message in state — catches start-node greetings and
+        #      end_session farewell messages that were already committed to state.
         if not streamed_tokens:
-            agent_text = _extract_agent_text(final_state)
+            interrupt_text = _extract_interrupt_text(state_snapshot)
+            agent_text = interrupt_text or _extract_agent_text(final_state)
             if agent_text:
+                log.info(
+                    "langgraph_turn_fallback",
+                    thread_id=self._thread_id,
+                    turn=self._turn,
+                    source="interrupt" if interrupt_text else "state",
+                    preview=agent_text[:60],
+                )
                 for sentence in _split_sentences(agent_text):
                     await self.push_frame(LLMTextFrame(text=sentence + " "))
 
