@@ -57,7 +57,9 @@ async def run_voice_agent(
         "voice_agent_starting",
         session_id=context.session_id,
         stt_provider=context.stt_provider,
+        stt_model=context.stt_model,
         tts_provider=context.tts_provider,
+        tts_model=context.tts_model,
         language=context.agent_language,
     )
 

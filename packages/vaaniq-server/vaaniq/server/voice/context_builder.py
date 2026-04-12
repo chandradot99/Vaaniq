@@ -146,7 +146,9 @@ async def build_voice_context(
         "voice_context_resolved",
         session_id=session_id,
         stt_provider=stt_provider,
+        stt_model=stt_model,
         tts_provider=tts_provider,
+        tts_model=tts_model,
         language=agent_language,
     )
 
