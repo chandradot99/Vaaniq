@@ -37,14 +37,10 @@ def create_stt_plugin(context: VoiceCallContext):
 
     if provider == "deepgram":
         return _build_deepgram(org_keys, language, model)
-    if provider == "sarvam":
-        return _build_sarvam(org_keys, language)
-    if provider == "assemblyai":
-        return _build_assemblyai(org_keys, language)
     if provider == "openai":
         return _build_openai(org_keys, language, model)
-    if provider == "azure":
-        return _build_azure_stt(org_keys, language)
+    if provider == "sarvam":
+        return _build_sarvam(org_keys, language)
 
     raise ProviderNotFoundError("stt", provider)
 
@@ -117,41 +113,6 @@ def _build_sarvam(org_keys: dict, language: str):
 
     api_key = _extract_key(org_keys, "sarvam")
     return SarvamSTT(api_key=api_key, language=language)
-
-
-# ── AssemblyAI ────────────────────────────────────────────────────────────────
-
-def _build_assemblyai(org_keys: dict, language: str):
-    try:
-        from livekit.plugins import assemblyai
-    except ImportError as exc:
-        raise ProviderNotFoundError("stt", "assemblyai") from exc
-
-    api_key = _extract_key(org_keys, "assemblyai")
-    return assemblyai.STT(api_key=api_key)
-
-
-# ── Azure Speech (STT) ────────────────────────────────────────────────────────
-
-def _build_azure_stt(org_keys: dict, language: str):
-    from livekit.plugins import azure
-
-    creds = org_keys.get("azure", {})
-    if isinstance(creds, str):
-        speech_key = creds
-        region = "eastus"
-    else:
-        speech_key = creds.get("api_key") or creds.get("speech_key", "")
-        region = creds.get("region", "eastus")
-
-    if not speech_key:
-        raise MissingAPIKeyError("azure")
-
-    return azure.STT(
-        speech_key=speech_key,
-        speech_region=region,
-        language=language or "en-US",
-    )
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

@@ -83,55 +83,6 @@ def test_elevenlabs_missing_key_raises():
         create_tts_plugin(ctx)
 
 
-# ── Azure ─────────────────────────────────────────────────────────────────────
-
-def test_azure_tts_created():
-    from livekit.plugins.azure import TTS
-
-    ctx = _ctx(
-        tts_provider="azure",
-        agent_language="hi-IN",
-        org_keys={"azure": {"api_key": "az-key", "region": "eastus"}},
-    )
-    plugin = create_tts_plugin(ctx)
-    assert isinstance(plugin, TTS)
-
-
-def test_azure_tts_string_key():
-    from livekit.plugins.azure import TTS
-
-    ctx = _ctx(
-        tts_provider="azure",
-        org_keys={"azure": {"api_key": "az-key", "region": "eastus"}},
-    )
-    plugin = create_tts_plugin(ctx)
-    assert isinstance(plugin, TTS)
-
-
-def test_azure_missing_key_raises():
-    ctx = _ctx(tts_provider="azure", org_keys={})
-    with pytest.raises(MissingAPIKeyError):
-        create_tts_plugin(ctx)
-
-
-def test_azure_default_hindi_voice():
-    from vaaniq.voice.tts import _azure_default_voice
-
-    assert _azure_default_voice("hi-IN") == "hi-IN-SwaraNeural"
-    assert _azure_default_voice("ta-IN") == "ta-IN-PallaviNeural"
-    assert _azure_default_voice("en-US") == "en-US-AriaNeural"
-
-
-# ── Deepgram TTS ──────────────────────────────────────────────────────────────
-
-def test_deepgram_tts_created():
-    from livekit.plugins.deepgram import TTS
-
-    ctx = _ctx(tts_provider="deepgram", org_keys={"deepgram": "dg-key"})
-    plugin = create_tts_plugin(ctx)
-    assert isinstance(plugin, TTS)
-
-
 # ── Sarvam AI ─────────────────────────────────────────────────────────────────
 
 def test_sarvam_tts_created():
@@ -173,31 +124,3 @@ def test_unknown_provider_raises():
         create_tts_plugin(ctx)
     assert exc_info.value.provider == "google"
     assert exc_info.value.category == "tts"
-
-
-def test_openai_tts_missing_key_raises():
-    ctx = _ctx(tts_provider="openai", org_keys={})
-    with pytest.raises(MissingAPIKeyError):
-        create_tts_plugin(ctx)
-
-
-def test_openai_tts_created():
-    from livekit.plugins.openai import TTS
-
-    ctx = _ctx(tts_provider="openai", org_keys={"openai": "sk-test-key"})
-    plugin = create_tts_plugin(ctx)
-    assert isinstance(plugin, TTS)
-
-
-def test_openai_tts_custom_voice_and_model():
-    from livekit.plugins.openai import TTS
-
-    ctx = _ctx(
-        tts_provider="openai",
-        tts_model="tts-1-hd",
-        tts_speed=1.2,
-        org_keys={"openai": "sk-test-key"},
-    )
-    # voice_id is None here — defaults to "alloy"
-    plugin = create_tts_plugin(ctx)
-    assert isinstance(plugin, TTS)

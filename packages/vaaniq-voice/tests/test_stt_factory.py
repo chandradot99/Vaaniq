@@ -127,33 +127,6 @@ def test_openai_missing_key_raises():
         create_stt_plugin(ctx)
 
 
-# ── Azure STT ─────────────────────────────────────────────────────────────────
-
-def test_azure_stt_created():
-    from livekit.plugins.azure import STT
-
-    ctx = _ctx(
-        stt_provider="azure",
-        org_keys={"azure": {"api_key": "azure-speech-key", "region": "eastus"}},
-    )
-    plugin = create_stt_plugin(ctx)
-    assert isinstance(plugin, STT)
-
-
-def test_azure_stt_string_key():
-    from livekit.plugins.azure import STT
-
-    ctx = _ctx(stt_provider="azure", org_keys={"azure": "azure-speech-key"})
-    plugin = create_stt_plugin(ctx)
-    assert isinstance(plugin, STT)
-
-
-def test_azure_stt_missing_key_raises():
-    ctx = _ctx(stt_provider="azure", org_keys={})
-    with pytest.raises(MissingAPIKeyError):
-        create_stt_plugin(ctx)
-
-
 # ── Unknown provider ──────────────────────────────────────────────────────────
 
 def test_unknown_provider_raises():
