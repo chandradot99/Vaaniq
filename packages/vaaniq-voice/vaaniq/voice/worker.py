@@ -218,6 +218,7 @@ async def _delete_livekit_room(room_name: str) -> None:
     env vars (same ones the worker uses to register with LiveKit).
     """
     import os
+
     from livekit.api import DeleteRoomRequest, LiveKitAPI
 
     url = os.environ.get("LIVEKIT_URL", "")
@@ -283,7 +284,6 @@ async def _find_session_by_phone(phone: str) -> str | None:
     from datetime import datetime, timedelta, timezone
 
     from sqlalchemy import or_, select
-
     from vaaniq.server.core.database import async_session_factory
     from vaaniq.server.models.session import Session, SessionStatus
 

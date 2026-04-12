@@ -115,7 +115,6 @@ def test_azure_missing_key_raises():
 
 
 def test_azure_default_hindi_voice():
-    from livekit.plugins.azure import TTS
     from vaaniq.voice.tts import _azure_default_voice
 
     assert _azure_default_voice("hi-IN") == "hi-IN-SwaraNeural"
