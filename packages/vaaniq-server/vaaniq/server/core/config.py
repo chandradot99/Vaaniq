@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     livekit_api_secret: str = ""
     # SIP domain: <project>.sip.livekit.cloud (derived automatically if not set)
     livekit_sip_domain: str = ""
+    # Outbound SIP trunk ID — created in LiveKit Cloud dashboard (Telephony → SIP trunks → Outbound)
+    # Used by CreateSIPParticipant to place outbound calls via Twilio SIP
+    livekit_outbound_sip_trunk_id: str = ""
 
     # ── OAuth provider credentials ────────────────────────────────────────────
     # Self-hosted deployments must register their own OAuth apps with each provider

@@ -94,8 +94,12 @@ async def twilio_voice_outbound(
     Twilio hits this when an outbound call is answered.
     The session already exists — connect it to the LiveKit room.
     """
+    # Create the LiveKit room with session_id metadata before Twilio dials in.
+    # Without this, LiveKit auto-creates the room on SIP connect but with no
+    # metadata, so the worker can't resolve the session_id and the call fails.
+    await _create_livekit_room(session_id)
     sip_uri = _livekit_sip_uri(session_id)
-    log.info("voice_outbound_answered", session_id=session_id)
+    log.info("voice_outbound_answered", session_id=session_id, sip_uri=sip_uri)
     return Response(content=_sip_dial_twiml(sip_uri), media_type="application/xml")
 
 

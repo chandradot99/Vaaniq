@@ -26,12 +26,12 @@ Vaaniq is built as multiple composable Python packages under a shared `vaaniq` n
 |---|---|---|
 | `vaaniq-core` | Base classes + `SessionState` — no external deps | `pip install vaaniq-core` |
 | `vaaniq-graph` | Visual LangGraph execution engine | `pip install vaaniq-graph` |
-| `vaaniq-voice` | Voice pipeline — Pipecat (PSTN) + LiveKit (WebRTC) | `pip install vaaniq-voice` |
+| `vaaniq-voice` | Voice pipeline — LiveKit Agents (STT → LangGraph → TTS) | `pip install vaaniq-voice` |
 | `vaaniq-rag` | RAG pipeline + vector DB connectors | `pip install vaaniq-rag` |
 | `vaaniq-tools` | Pre-built tool library (Calendar, CRM, Payments, …) | `pip install vaaniq-tools` |
 | `vaaniq-channels` | Chat (SSE) + WhatsApp channel handlers | `pip install vaaniq-channels` |
 | `vaaniq-server` | FastAPI server — REST APIs, DB, auth | self-hosted only |
-| `vaaniq-voice-server` | Standalone voice server — all Twilio webhooks + Pipecat pipeline | self-hosted only |
+| `vaaniq-voice-server` | Standalone voice server — Twilio webhooks + LiveKit worker | self-hosted only |
 
 Install only what you need:
 
@@ -103,7 +103,7 @@ Vaaniq runs as two separate processes. Open two terminals:
 # Terminal 1 — main API server (REST, DB, auth, chat)
 uv run uvicorn vaaniq.server.main:app --port 8000 --reload
 
-# Terminal 2 — voice server (Twilio webhooks, Pipecat pipeline)
+# Terminal 2 — voice server (Twilio webhooks + LiveKit worker)
 uv run uvicorn vaaniq.voice_server.main:app --port 8001 --reload
 ```
 
@@ -177,7 +177,7 @@ uv run alembic -c packages/vaaniq-server/alembic.ini upgrade head
 
 - **Runtime:** Python 3.12, FastAPI, SQLAlchemy (async), Alembic
 - **Agent engine:** LangGraph, LangChain
-- **Voice:** Pipecat (PSTN), LiveKit (WebRTC)
+- **Voice:** LiveKit Agents (PSTN via Twilio SIP + browser WebRTC)
 - **Database:** PostgreSQL 16 + pgvector
 - **Queue:** Celery + Redis
 - **Observability:** Sentry, OpenTelemetry, Prometheus, structlog

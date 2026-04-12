@@ -189,14 +189,25 @@ class VoiceService:
         self, org_id: str, body: OutboundCallRequest
     ) -> OutboundCallResponse:
         """
-        Initiate an outbound call via Twilio REST API.
+        Initiate an outbound call via LiveKit CreateSIPParticipant (production path)
+        or Twilio REST API fallback (when no outbound SIP trunk is configured).
 
-        Flow:
-          1. Validate agent and from_number belong to org.
-          2. Fetch org's Twilio credentials from integrations (BYOK).
-          3. Create a session row so context_builder can find it.
-          4. Call Twilio REST API — Twilio opens a fresh WebSocket to our webhook.
+        LiveKit production flow:
+          1. Create session + LiveKit room (name = session_id, metadata = {session_id}).
+          2. Dispatch the vaaniq-voice agent to the room — worker joins with correct metadata.
+          3. LiveKit calls the user's phone via CreateSIPParticipant → outbound SIP trunk.
+          4. User answers → connected to our room → agent greets them.
+
+        This avoids the Twilio SIP header-rewriting problem where Twilio replaces
+        our session_id SIP username with its own phone number, causing the worker
+        to be unable to resolve the session from room metadata.
+
+        Twilio fallback (LIVEKIT_OUTBOUND_SIP_TRUNK_ID not set):
+          Uses the original Twilio REST API → TwiML → LiveKit SIP path.
+          Session is resolved by phone-number lookup in the worker.
         """
+        from vaaniq.server.core.config import settings as _settings
+
         # Validate agent
         agent = await self._agent_repo.get_by_id(body.agent_id)
         if not agent or agent.deleted_at is not None:
@@ -209,10 +220,7 @@ class VoiceService:
         if not pn or pn.org_id != org_id:
             raise PhoneNumberNotFound(body.from_number)
 
-        # Fetch Twilio credentials from org integrations
-        account_sid, auth_token = await self._get_twilio_creds(org_id)
-
-        # Create session row (status active, call_sid filled in after Twilio responds)
+        # Create session row
         session_id = str(uuid.uuid4())
         session = Session(
             id=session_id,
@@ -231,45 +239,78 @@ class VoiceService:
         self.db.add(session)
         await self.db.flush()
 
-        # Resolve public backend URL — platform_cache takes precedence over settings
-        from vaaniq.server.core.config import settings as _settings
-        _platform_twilio = platform_cache.get_provider_config("twilio")
-        backend_url = (
-            (_platform_twilio or {}).get("webhook_url") or _settings.backend_url
-        ).rstrip("/")
+        if _settings.livekit_outbound_sip_trunk_id:
+            # ── LiveKit-native outbound (production) ──────────────────────────
+            # Create room with session_id metadata so the worker can resolve it.
+            await _create_livekit_room_with_dispatch(session_id)
 
-        # Build the TwiML URL Twilio will fetch when the call connects
-        twiml_url = f"{backend_url}/webhooks/twilio/voice/outbound?session_id={session_id}"
-        status_callback = f"{backend_url}/webhooks/twilio/voice/status"
+            # LiveKit calls the user's phone through the outbound SIP trunk.
+            sip_participant_id = await _create_sip_participant(
+                room_name=session_id,
+                to_number=body.to_number,
+                from_number=body.from_number,
+                trunk_id=_settings.livekit_outbound_sip_trunk_id,
+            )
 
-        # Initiate via Twilio REST API
-        call_sid = await _create_twilio_call(
-            account_sid=account_sid,
-            auth_token=auth_token,
-            from_number=body.from_number,
-            to_number=body.to_number,
-            twiml_url=twiml_url,
-            status_callback=status_callback,
-        )
+            meta = dict(session.meta)
+            meta["sip_participant_id"] = sip_participant_id
+            session.meta = meta
+            await self.db.commit()
 
-        # Store call_sid so context_builder / status webhook can look it up
-        meta = dict(session.meta)
-        meta["call_sid"] = call_sid
-        session.meta = meta
-        await self.db.commit()
+            log.info(
+                "outbound_call_initiated",
+                org_id=org_id,
+                session_id=session_id,
+                method="livekit_sip",
+                to=body.to_number,
+            )
+            return OutboundCallResponse(
+                session_id=session_id,
+                call_sid=sip_participant_id,
+                status="queued",
+            )
 
-        log.info(
-            "outbound_call_initiated",
-            org_id=org_id,
-            session_id=session_id,
-            call_sid=call_sid,
-            to=body.to_number,
-        )
-        return OutboundCallResponse(
-            session_id=session_id,
-            call_sid=call_sid,
-            status="queued",
-        )
+        else:
+            # ── Twilio REST API fallback ───────────────────────────────────────
+            # Used when LIVEKIT_OUTBOUND_SIP_TRUNK_ID is not configured.
+            # Worker resolves session_id via phone-number lookup (_find_session_by_phone).
+            account_sid, auth_token = await self._get_twilio_creds(org_id)
+
+            _platform_twilio = platform_cache.get_provider_config("twilio")
+            voice_url = (
+                (_platform_twilio or {}).get("webhook_url") or _settings.voice_server_url
+            ).rstrip("/")
+
+            twiml_url = f"{voice_url}/webhooks/twilio/voice/outbound?session_id={session_id}"
+            status_callback = f"{voice_url}/webhooks/twilio/voice/status"
+
+            call_sid = await _create_twilio_call(
+                account_sid=account_sid,
+                auth_token=auth_token,
+                from_number=body.from_number,
+                to_number=body.to_number,
+                twiml_url=twiml_url,
+                status_callback=status_callback,
+            )
+
+            meta = dict(session.meta)
+            meta["call_sid"] = call_sid
+            session.meta = meta
+            await self.db.commit()
+
+            log.info(
+                "outbound_call_initiated",
+                org_id=org_id,
+                session_id=session_id,
+                method="twilio_rest",
+                call_sid=call_sid,
+                to=body.to_number,
+            )
+            return OutboundCallResponse(
+                session_id=session_id,
+                call_sid=call_sid,
+                status="queued",
+            )
 
     async def list_twilio_numbers(self, org_id: str) -> list[TwilioAvailableNumber]:
         """
@@ -336,6 +377,95 @@ class VoiceService:
             return platform_twilio.get("account_sid", ""), platform_twilio["auth_token"]
 
         raise TwilioCredentialsMissing()
+
+
+async def _create_livekit_room_with_dispatch(session_id: str) -> None:
+    """
+    Create a LiveKit room with session_id metadata and dispatch the voice agent to it.
+
+    This is the first step of the LiveKit-native outbound flow:
+      1. Pre-create the room so metadata (session_id) is set before the worker joins.
+      2. Create an AgentDispatch so the worker joins immediately — it reads session_id
+         from room metadata rather than relying on the SIP dispatch rule room name.
+    """
+    import json
+
+    from livekit.api import (
+        AgentDispatchClient,
+        CreateAgentDispatchRequest,
+        CreateRoomRequest,
+        LiveKitAPI,
+    )
+    from vaaniq.server.core.config import settings
+
+    livekit_url = settings.livekit_url
+    api_key = settings.livekit_api_key
+    api_secret = settings.livekit_api_secret
+
+    if not all([livekit_url, api_key, api_secret]):
+        raise RuntimeError("LIVEKIT_URL / LIVEKIT_API_KEY / LIVEKIT_API_SECRET not set")
+
+    async with LiveKitAPI(url=livekit_url, api_key=api_key, api_secret=api_secret) as lk:
+        # 1. Create room with session_id baked into metadata
+        await lk.room.create_room(
+            CreateRoomRequest(
+                name=session_id,
+                metadata=json.dumps({"session_id": session_id}),
+                empty_timeout=300,
+                max_participants=10,
+            )
+        )
+        log.info("livekit_room_created", session_id=session_id)
+
+        # 2. Dispatch the agent — worker joins the room and reads metadata immediately
+        await lk.agent_dispatch.create_dispatch(
+            CreateAgentDispatchRequest(
+                room_name=session_id,
+                agent_name="vaaniq-voice",
+            )
+        )
+        log.info("livekit_agent_dispatched", session_id=session_id)
+
+
+async def _create_sip_participant(
+    *,
+    room_name: str,
+    to_number: str,
+    from_number: str,
+    trunk_id: str,
+) -> str:
+    """
+    Use LiveKit's CreateSIPParticipant to place an outbound call to the user's phone.
+
+    LiveKit connects the call to `room_name` via the outbound SIP trunk (Twilio).
+    The user hears the agent when they answer. Returns the SIP participant identity.
+
+    Requires LIVEKIT_OUTBOUND_SIP_TRUNK_ID to be set (Telephony → SIP trunks → Outbound
+    in the LiveKit Cloud dashboard).
+    """
+    from livekit.api import CreateSIPParticipantRequest, LiveKitAPI
+    from vaaniq.server.core.config import settings
+
+    async with LiveKitAPI(
+        url=settings.livekit_url,
+        api_key=settings.livekit_api_key,
+        api_secret=settings.livekit_api_secret,
+    ) as lk:
+        resp = await lk.sip.create_sip_participant(
+            CreateSIPParticipantRequest(
+                sip_trunk_id=trunk_id,
+                sip_call_to=to_number,
+                room_name=room_name,
+                participant_identity=f"phone-{to_number}",
+                participant_name="Caller",
+                # from_number is passed as the SIP From header — determines caller ID
+                # shown to the user. Must be a number registered on the SIP trunk.
+                hide_phone_number=False,
+            )
+        )
+        log.info("livekit_sip_participant_created",
+                 room=room_name, to=to_number, participant=resp.participant_identity)
+        return resp.participant_identity
 
 
 async def _create_twilio_call(

@@ -52,10 +52,27 @@ async def entrypoint(ctx: JobContext) -> None:
         log.error("worker_invalid_room_metadata", raw=metadata_raw)
         return
 
-    session_id = metadata.get("session_id") or ctx.room.name
+    session_id = metadata.get("session_id")
+
     if not session_id:
-        log.error("worker_missing_session_id", room=ctx.room.name)
-        return
+        # Room was created by the SIP dispatch rule (not pre-created by us).
+        # dispatchRuleIndividual names the room after the Twilio caller number:
+        # e.g. "+17407576101_Eov7P7RYWUsJ" → phone = "+17407576101"
+        # Look up the most recent active voice session for that phone number.
+        room_name = ctx.room.name
+        phone = room_name.rsplit("_", 1)[0] if "_" in room_name else room_name
+        if phone:
+            session_id = await _find_session_by_phone(phone)
+            if session_id:
+                log.info("worker_session_resolved_by_phone",
+                         phone=phone, session_id=session_id, room=room_name)
+            else:
+                log.error("worker_session_not_found_by_phone",
+                          phone=phone, room=room_name)
+                return
+        else:
+            log.error("worker_missing_session_id", room=room_name)
+            return
 
     log.info("worker_job_received", session_id=session_id, room=ctx.room.name)
 
@@ -246,6 +263,50 @@ async def _finalize_session(
         event_collectors=event_collectors or [],
     )
     log.info("worker_session_finalized", session_id=session_id)
+
+
+async def _find_session_by_phone(phone: str) -> str | None:
+    """
+    Find the most recent active voice session for a given phone number.
+
+    Used as a fallback when room metadata is empty — this happens when
+    LiveKit's SIP dispatch rule creates the room (naming it after the
+    Twilio caller number) rather than using our pre-created room.
+
+    Searches both:
+      - inbound sessions:  user_id = phone (caller's number is the user)
+      - outbound sessions: meta->>'from' = phone (org's Twilio number is the caller)
+
+    Filters to active sessions created within the last 5 minutes.
+    Returns the most recent match.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import or_, select
+
+    from vaaniq.server.core.database import async_session_factory
+    from vaaniq.server.models.session import Session, SessionStatus
+
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=5)
+
+    async with async_session_factory() as db:
+        stmt = (
+            select(Session.id)
+            .where(
+                Session.channel == "voice",
+                Session.status == SessionStatus.active,
+                Session.created_at >= cutoff,
+                or_(
+                    Session.user_id == phone,
+                    Session.meta["from"].astext == phone,
+                ),
+            )
+            .order_by(Session.created_at.desc())
+            .limit(1)
+        )
+        result = await db.execute(stmt)
+        row = result.scalar_one_or_none()
+        return str(row) if row else None
 
 
 if __name__ == "__main__":
