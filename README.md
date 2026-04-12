@@ -31,7 +31,7 @@ Vaaniq is built as multiple composable Python packages under a shared `vaaniq` n
 | `vaaniq-tools` | Pre-built tool library (Calendar, CRM, Payments, …) | `pip install vaaniq-tools` |
 | `vaaniq-channels` | Chat (SSE) + WhatsApp channel handlers | `pip install vaaniq-channels` |
 | `vaaniq-server` | FastAPI server — REST APIs, DB, auth | self-hosted only |
-| `vaaniq-voice-server` | Standalone voice server — Twilio webhooks + LiveKit worker | self-hosted only |
+| `vaaniq-voice-server` | Standalone voice server — Twilio webhooks + LiveKit worker ([setup guide](packages/vaaniq-voice-server/README.md)) | self-hosted only |
 
 Install only what you need:
 
