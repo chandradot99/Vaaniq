@@ -45,7 +45,10 @@ async def entrypoint(ctx: JobContext) -> None:
     # ── Step 1: Extract session_id from room metadata ─────────────────────────
     # vaaniq-server sets room metadata to {"session_id": "..."} when it creates
     # the LiveKit room in response to the Twilio inbound webhook.
-    metadata_raw = ctx.room.metadata or "{}"
+    # Use ctx.job.room.metadata (Room proto from the dispatched job) — this is
+    # populated at dispatch time. ctx.room.metadata is only available after
+    # ctx.connect() is called and must not be read here.
+    metadata_raw = ctx.job.room.metadata or "{}"
     try:
         metadata = json.loads(metadata_raw)
     except json.JSONDecodeError:

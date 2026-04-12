@@ -273,10 +273,12 @@ Each user turn fires `_on_turn_events(turn, raw_events)` with all `astream_event
 
 The worker reads `session_id` from the LiveKit room metadata. Room metadata is set when **we** pre-create the room (inbound webhook and LiveKit-native outbound). When the SIP dispatch rule creates the room (Twilio fallback outbound path), metadata is empty.
 
+**Important:** use `ctx.job.room.metadata` (the Room proto from the dispatched job, populated at dispatch time), NOT `ctx.room.metadata` (the WebRTC Room object, which is only populated after `ctx.connect()` is called).
+
 ```python
 # Priority order in entrypoint():
 session_id = (
-    room.metadata["session_id"]          # 1. pre-created room (ideal)
+    ctx.job.room.metadata["session_id"]  # 1. pre-created room (ideal)
     or _find_session_by_phone(phone)     # 2. phone lookup from room name
 )
 
@@ -324,6 +326,7 @@ The Sarvam STT and TTS plugins (`stt/sarvam.py`, `tts/sarvam.py`) implement Live
 - **Don't use `session.transcript` to check active status** — transcript defaults to `[]` (empty list), not `NULL`. Use `session.status == "active"` instead.
 - **Don't finalize after room deletion** — LiveKit cancels the entrypoint task when the room closes. Always finalize while the room is still open.
 - **Don't trust the room name as session_id** — the SIP dispatch rule names rooms after the Twilio caller number, not the session UUID. Always read from room metadata first.
+- **Don't read `ctx.room.metadata` in the entrypoint** — `ctx.room` is the WebRTC Room object; its metadata is only populated after `ctx.connect()`. Read `ctx.job.room.metadata` instead (the Room proto from the dispatched job, available immediately).
 - **Don't set `VAD_STOP_SECS` manually** — LiveKit's STT-based endpointing replaces VAD-parameter tuning. Adjust `min_endpointing_delay` on `Agent` instead (default 300ms, 70ms for Sarvam).
 - **Don't use `asyncio.get_event_loop().create_task()`** — deprecated in Python 3.10+. Use `asyncio.create_task()`.
 
