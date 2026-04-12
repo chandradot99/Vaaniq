@@ -69,7 +69,7 @@ Indie developer         vaaniq-graph                Just the graph engine
                         (brings their own server)      in their own app
 
 Agency / startup        vaaniq-server               Full self-hosted
-                        + docker-compose up             platform + dashboard
+                        + docker compose up             platform + dashboard
 
 End business client     vaaniq.ai (your SaaS)       Hosted cloud version
 ```
@@ -784,7 +784,7 @@ uv run uvicorn vaaniq.server.main:app --reload        # terminal 1
 uv run celery -A vaaniq.server.workers.celery_app worker  # terminal 2
 
 # 6b. OR — full backend stack with Docker
-docker-compose up
+docker compose up
 ```
 
 ---

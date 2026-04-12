@@ -86,7 +86,7 @@ FERNET_KEY=your-fernet-key
 ### 4. Start infrastructure
 
 ```bash
-docker-compose up postgres redis -d
+docker compose up postgres redis -d
 ```
 
 ### 5. Run migrations
@@ -115,7 +115,7 @@ API docs at `http://localhost:8000/docs` and `http://localhost:8001/docs` (devel
 ### Full stack with Docker
 
 ```bash
-docker-compose up
+docker compose up
 ```
 
 ---
