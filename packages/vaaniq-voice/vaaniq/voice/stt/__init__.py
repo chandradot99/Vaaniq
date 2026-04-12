@@ -3,10 +3,17 @@ STT provider factory for vaaniq-voice (LiveKit Agents).
 
 Returns a LiveKit STT plugin instance for the requested provider.
 Providers are loaded lazily to avoid importing SDKs that aren't installed.
+
+All builder functions validate the requested model against a known-good set and
+fall back to the provider default with a warning log rather than crashing the
+AgentSession with a remote 400/authentication error.
 """
 
+import structlog
 from vaaniq.voice.exceptions import MissingAPIKeyError, ProviderNotFoundError
 from vaaniq.voice.pipeline.context import VoiceCallContext
+
+log = structlog.get_logger()
 
 
 def create_stt_plugin(context: VoiceCallContext):
@@ -44,10 +51,7 @@ def create_stt_plugin(context: VoiceCallContext):
 
 # ── Deepgram ──────────────────────────────────────────────────────────────────
 
-# Models accepted by the Deepgram streaming API. Any value not in this set
-# (e.g. "nova-3-phonecall" which was briefly shown in the UI but never existed)
-# falls back to the default to prevent a 400 WebSocket handshake error.
-_VALID_DEEPGRAM_MODELS = {
+_VALID_DEEPGRAM_STT_MODELS = {
     "nova-3",
     "nova-2",
     "nova-2-phonecall",
@@ -59,24 +63,16 @@ _VALID_DEEPGRAM_MODELS = {
     "enhanced",
     "base",
 }
-_DEEPGRAM_DEFAULT_MODEL = "nova-3"
+_DEEPGRAM_STT_DEFAULT = "nova-3"
 
 
 def _build_deepgram(org_keys: dict, language: str, model: str | None):
-    import structlog
     from livekit.plugins import deepgram
 
-    log = structlog.get_logger()
     api_key = _extract_key(org_keys, "deepgram")
-
-    effective_model = model if model in _VALID_DEEPGRAM_MODELS else _DEEPGRAM_DEFAULT_MODEL
-    if model and model != effective_model:
-        log.warning(
-            "deepgram_stt_invalid_model_fallback",
-            requested=model,
-            fallback=effective_model,
-        )
-
+    effective_model = _sanitize_model(
+        model, _VALID_DEEPGRAM_STT_MODELS, _DEEPGRAM_STT_DEFAULT, "deepgram_stt"
+    )
     return deepgram.STT(
         api_key=api_key,
         language=language,
@@ -85,6 +81,32 @@ def _build_deepgram(org_keys: dict, language: str, model: str | None):
         # pure silence detection. Reduces cut-offs on natural mid-sentence pauses.
         endpointing_ms=200,
         interim_results=True,
+    )
+
+
+# ── OpenAI Whisper ────────────────────────────────────────────────────────────
+
+_VALID_OPENAI_STT_MODELS = {
+    "gpt-4o-mini-transcribe",
+    "gpt-4o-transcribe",
+    "whisper-1",
+}
+_OPENAI_STT_DEFAULT = "gpt-4o-mini-transcribe"
+
+
+def _build_openai(org_keys: dict, language: str, model: str | None):
+    from livekit.plugins import openai as lk_openai
+
+    api_key = _extract_key(org_keys, "openai")
+    # BCP-47 codes like "en-US" → Whisper uses ISO 639-1 "en"
+    whisper_lang = language.split("-")[0] if language else "en"
+    effective_model = _sanitize_model(
+        model, _VALID_OPENAI_STT_MODELS, _OPENAI_STT_DEFAULT, "openai_stt"
+    )
+    return lk_openai.STT(
+        api_key=api_key,
+        language=whisper_lang,
+        model=effective_model,
     )
 
 
@@ -107,21 +129,6 @@ def _build_assemblyai(org_keys: dict, language: str):
 
     api_key = _extract_key(org_keys, "assemblyai")
     return assemblyai.STT(api_key=api_key)
-
-
-# ── OpenAI Whisper ────────────────────────────────────────────────────────────
-
-def _build_openai(org_keys: dict, language: str, model: str | None):
-    from livekit.plugins import openai as lk_openai
-
-    api_key = _extract_key(org_keys, "openai")
-    # BCP-47 codes like "en-US" → Whisper uses ISO 639-1 "en"
-    whisper_lang = language.split("-")[0] if language else "en"
-    return lk_openai.STT(
-        api_key=api_key,
-        language=whisper_lang,
-        model=model or "gpt-4o-mini-transcribe",
-    )
 
 
 # ── Azure Speech (STT) ────────────────────────────────────────────────────────
@@ -148,6 +155,30 @@ def _build_azure_stt(org_keys: dict, language: str):
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _sanitize_model(
+    model: str | None,
+    valid: set[str],
+    default: str,
+    provider_label: str,
+) -> str:
+    """
+    Return `model` if it is in the valid set, otherwise return `default`.
+
+    Logs a warning when an unrecognised model is replaced so operators can
+    find and clean up stale DB values without the call failing silently.
+    """
+    if not model:
+        return default
+    if model in valid:
+        return model
+    log.warning(
+        f"{provider_label}_invalid_model_fallback",
+        requested=model,
+        fallback=default,
+    )
+    return default
+
 
 def _extract_key(org_keys: dict, provider: str) -> str:
     value = org_keys.get(provider)

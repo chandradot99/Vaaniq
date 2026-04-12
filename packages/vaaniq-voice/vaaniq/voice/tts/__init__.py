@@ -3,10 +3,17 @@ TTS provider factory for vaaniq-voice (LiveKit Agents).
 
 Returns a LiveKit TTS plugin instance for the requested provider.
 Providers are loaded lazily to avoid importing SDKs that aren't installed.
+
+All builder functions validate the requested model/voice against a known-good set
+and fall back to the provider default with a warning log rather than crashing the
+AgentSession with a remote 400/authentication error.
 """
 
+import structlog
 from vaaniq.voice.exceptions import MissingAPIKeyError, ProviderNotFoundError
 from vaaniq.voice.pipeline.context import VoiceCallContext
+
+log = structlog.get_logger()
 
 
 def create_tts_plugin(context: VoiceCallContext):
@@ -48,6 +55,10 @@ def create_tts_plugin(context: VoiceCallContext):
 
 # ── Cartesia ──────────────────────────────────────────────────────────────────
 
+_VALID_CARTESIA_MODELS = {"sonic-2", "sonic-english", "sonic-multilingual"}
+_CARTESIA_DEFAULT_MODEL = "sonic-2"
+
+
 def _build_cartesia(
     org_keys: dict,
     voice_id: str | None,
@@ -58,10 +69,13 @@ def _build_cartesia(
     from livekit.plugins import cartesia
 
     api_key = _extract_key(org_keys, "cartesia")
+    effective_model = _sanitize_model(
+        model, _VALID_CARTESIA_MODELS, _CARTESIA_DEFAULT_MODEL, "cartesia_tts"
+    )
     kwargs: dict = {
         "api_key": api_key,
         "voice": voice_id or "a0e99841-438c-4a64-b679-ae501e7d6091",  # Cartesia default
-        "model": model or "sonic-2",
+        "model": effective_model,
         "language": language[:2].lower(),  # Cartesia uses "en", "hi", etc.
         "encoding": "pcm_s16le",
         "sample_rate": 24000,
@@ -73,6 +87,17 @@ def _build_cartesia(
 
 # ── ElevenLabs ────────────────────────────────────────────────────────────────
 
+_VALID_ELEVENLABS_MODELS = {
+    "eleven_flash_v2_5",
+    "eleven_turbo_v2_5",
+    "eleven_turbo_v2",
+    "eleven_multilingual_v2",
+    "eleven_monolingual_v1",
+    "eleven_multilingual_v1",
+}
+_ELEVENLABS_DEFAULT_MODEL = "eleven_flash_v2_5"
+
+
 def _build_elevenlabs(
     org_keys: dict,
     voice_id: str | None,
@@ -82,10 +107,13 @@ def _build_elevenlabs(
     from livekit.plugins import elevenlabs
 
     api_key = _extract_key(org_keys, "elevenlabs")
+    effective_model = _sanitize_model(
+        model, _VALID_ELEVENLABS_MODELS, _ELEVENLABS_DEFAULT_MODEL, "elevenlabs_tts"
+    )
     return elevenlabs.TTS(
         api_key=api_key,
         voice_id=voice_id or elevenlabs.DEFAULT_VOICE_ID,
-        model=model or "eleven_flash_v2_5",
+        model=effective_model,
     )
 
 
@@ -135,14 +163,35 @@ def _azure_default_voice(language: str) -> str:
 
 # ── Deepgram TTS ──────────────────────────────────────────────────────────────
 
+# Deepgram TTS voices — the model field is the voice ID (aura-2-* prefix).
+# Rather than maintaining an exhaustive list, we validate the naming convention.
+_DEEPGRAM_TTS_DEFAULT = "aura-2-en-us"
+
+
 def _build_deepgram(org_keys: dict, voice_id: str | None, model: str | None):
     from livekit.plugins import deepgram
 
     api_key = _extract_key(org_keys, "deepgram")
-    return deepgram.TTS(
-        api_key=api_key,
-        model=voice_id or model or "aura-2-en-us",
-    )
+    # voice_id takes priority; model is the fallback (both map to the same field)
+    requested = voice_id or model
+    effective = _sanitize_deepgram_tts_voice(requested)
+    return deepgram.TTS(api_key=api_key, model=effective)
+
+
+def _sanitize_deepgram_tts_voice(voice: str | None) -> str:
+    """
+    Deepgram Aura voices follow the pattern 'aura-2-<name>-<locale>'.
+    Accept any value matching this prefix; reject (and default) anything else.
+    """
+    if voice and voice.startswith("aura-"):
+        return voice
+    if voice:
+        log.warning(
+            "deepgram_tts_invalid_voice_fallback",
+            requested=voice,
+            fallback=_DEEPGRAM_TTS_DEFAULT,
+        )
+    return _DEEPGRAM_TTS_DEFAULT
 
 
 # ── Sarvam AI TTS (Indian languages) ─────────────────────────────────────────
@@ -156,6 +205,16 @@ def _build_sarvam(org_keys: dict, voice_id: str | None, language: str):
 
 # ── OpenAI TTS ────────────────────────────────────────────────────────────────
 
+_VALID_OPENAI_TTS_MODELS = {"tts-1", "tts-1-hd", "gpt-4o-mini-tts"}
+_OPENAI_TTS_DEFAULT_MODEL = "tts-1"
+
+_VALID_OPENAI_TTS_VOICES = {
+    "alloy", "echo", "fable", "onyx", "nova", "shimmer",
+    "ash", "ballad", "coral", "sage", "verse",
+}
+_OPENAI_TTS_DEFAULT_VOICE = "alloy"
+
+
 def _build_openai(
     org_keys: dict,
     voice_id: str | None,
@@ -165,10 +224,16 @@ def _build_openai(
     from livekit.plugins import openai as lk_openai
 
     api_key = _extract_key(org_keys, "openai")
+    effective_model = _sanitize_model(
+        model, _VALID_OPENAI_TTS_MODELS, _OPENAI_TTS_DEFAULT_MODEL, "openai_tts"
+    )
+    effective_voice = _sanitize_model(
+        voice_id, _VALID_OPENAI_TTS_VOICES, _OPENAI_TTS_DEFAULT_VOICE, "openai_tts_voice"
+    )
     kwargs: dict = {
         "api_key": api_key,
-        "voice": voice_id or "alloy",
-        "model": model or "tts-1",
+        "voice": effective_voice,
+        "model": effective_model,
     }
     if speed is not None:
         kwargs["speed"] = speed
@@ -176,6 +241,30 @@ def _build_openai(
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _sanitize_model(
+    model: str | None,
+    valid: set[str],
+    default: str,
+    provider_label: str,
+) -> str:
+    """
+    Return `model` if it is in the valid set, otherwise return `default`.
+
+    Logs a warning when an unrecognised value is replaced so operators can
+    find and clean up stale DB values without the call failing silently.
+    """
+    if not model:
+        return default
+    if model in valid:
+        return model
+    log.warning(
+        f"{provider_label}_invalid_model_fallback",
+        requested=model,
+        fallback=default,
+    )
+    return default
+
 
 def _extract_key(org_keys: dict, provider: str) -> str:
     value = org_keys.get(provider)
