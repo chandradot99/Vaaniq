@@ -50,6 +50,7 @@ pip install vaaniq-tools[all]                  # all tools
 - [uv](https://docs.astral.sh/uv/) >= 0.4
 - Docker + Docker Compose
 - Python 3.12+
+- [LiveKit Cloud](https://livekit.io) account — free tier works (handles both phone calls and browser voice preview)
 
 ### 1. Clone
 
@@ -81,7 +82,15 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 ```env
 SECRET_KEY=your-jwt-secret
 FERNET_KEY=your-fernet-key
+
+# LiveKit Cloud — copy from livekit.io → project settings
+LIVEKIT_URL=wss://your-project.livekit.cloud
+LIVEKIT_API_KEY=APIxxxxxxxxxxxx
+LIVEKIT_API_SECRET=your-secret
+LIVEKIT_SIP_DOMAIN=your-project.sip.livekit.cloud
 ```
+
+> **LiveKit is used for both phone calls and browser voice preview.** A single LiveKit Cloud project handles everything — no local LiveKit server needed.
 
 ### 4. Start infrastructure
 
@@ -117,6 +126,8 @@ API docs at `http://localhost:8000/docs` and `http://localhost:8001/docs` (devel
 ```bash
 docker compose up
 ```
+
+> This starts Postgres and Redis via Docker. LiveKit is not included — use LiveKit Cloud (set `LIVEKIT_URL` in `.env`). A local LiveKit container is only needed for fully air-gapped self-hosted deployments.
 
 ---
 
