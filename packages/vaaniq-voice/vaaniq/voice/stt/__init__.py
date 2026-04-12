@@ -44,14 +44,43 @@ def create_stt_plugin(context: VoiceCallContext):
 
 # ── Deepgram ──────────────────────────────────────────────────────────────────
 
+# Models accepted by the Deepgram streaming API. Any value not in this set
+# (e.g. "nova-3-phonecall" which was briefly shown in the UI but never existed)
+# falls back to the default to prevent a 400 WebSocket handshake error.
+_VALID_DEEPGRAM_MODELS = {
+    "nova-3",
+    "nova-2",
+    "nova-2-phonecall",
+    "nova-2-finance",
+    "nova-2-general",
+    "nova-2-meeting",
+    "nova-2-medical",
+    "nova-2-conversationalai",
+    "enhanced",
+    "base",
+}
+_DEEPGRAM_DEFAULT_MODEL = "nova-3"
+
+
 def _build_deepgram(org_keys: dict, language: str, model: str | None):
+    import structlog
     from livekit.plugins import deepgram
 
+    log = structlog.get_logger()
     api_key = _extract_key(org_keys, "deepgram")
+
+    effective_model = model if model in _VALID_DEEPGRAM_MODELS else _DEEPGRAM_DEFAULT_MODEL
+    if model and model != effective_model:
+        log.warning(
+            "deepgram_stt_invalid_model_fallback",
+            requested=model,
+            fallback=effective_model,
+        )
+
     return deepgram.STT(
         api_key=api_key,
         language=language,
-        model=model or "nova-3",
+        model=effective_model,
         # Smart endpointing — uses Deepgram's finalization signal instead of
         # pure silence detection. Reduces cut-offs on natural mid-sentence pauses.
         endpointing_ms=200,
