@@ -16,7 +16,6 @@ from vaaniq.server.voice.exceptions import (
     SessionNotFound,
 )
 
-
 # ── _resolve_provider ─────────────────────────────────────────────────────────
 
 def test_resolve_prefers_first_in_preference():

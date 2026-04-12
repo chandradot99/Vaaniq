@@ -198,7 +198,7 @@ class AgentService:
 
         # ── 1. Create preview session in DB ───────────────────────────────────
         session_id = str(uuid.uuid4())
-        from vaaniq.server.models.session import Session, ChannelEnum, SessionStatus
+        from vaaniq.server.models.session import ChannelEnum, Session, SessionStatus
 
         session = Session(
             id=session_id,

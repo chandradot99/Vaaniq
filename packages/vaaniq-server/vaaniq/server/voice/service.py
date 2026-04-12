@@ -391,7 +391,6 @@ async def _create_livekit_room_with_dispatch(session_id: str) -> None:
     import json
 
     from livekit.api import (
-        AgentDispatchClient,
         CreateAgentDispatchRequest,
         CreateRoomRequest,
         LiveKitAPI,
