@@ -1,10 +1,23 @@
-"""PlatformConfig model — platform-level credentials for OAuth apps and external services.
+"""PlatformConfig model — deployment-wide credentials managed by the platform operator.
 
-Unlike the integrations table (per-org credentials), these are credentials owned
-by the platform operator — e.g. the Google OAuth app client_id/secret registered
-for this deployment, LangSmith API key, Sentry DSN.
+Two separate credential stores exist; do not confuse them:
 
-credentials: Fernet-encrypted JSON string — secrets (client_secret, api_key, dsn).
+  platform_configs (this table)
+    - Scope: the whole deployment (all organisations share these)
+    - Who sets it: owner/admin via /v1/admin/platform-configs
+    - Examples: Google OAuth app registration, Slack OAuth app, LangSmith tracing key,
+                Sentry DSN, default Twilio/Deepgram/Cartesia/ElevenLabs credentials
+    - Purpose: OAuth app registrations that every org uses, observability tooling,
+               and default voice/telephony credentials for orgs that haven't set their own
+
+  integrations (see models/integration.py)
+    - Scope: per organisation
+    - Who sets it: org members via /v1/integrations
+    - Examples: org's own OpenAI key, org's Deepgram key, HubSpot access token
+    - Purpose: BYOK (bring your own keys) for AI providers and third-party app connections
+    - Priority: org Integration credentials ALWAYS take priority over platform_configs defaults
+
+credentials: Fernet-encrypted JSON string — secrets (client_secret, auth_token, dsn, api_key).
 config:      Plain JSONB — non-secrets returned in API responses (client_id, redirect_uri).
 """
 import uuid

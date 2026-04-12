@@ -566,26 +566,46 @@ Used in `run_tool` input configs:
 
 ---
 
-## BYOK/BYOC
+## Credential Architecture — Platform Settings vs Integrations
 
-All client API keys encrypted with **Fernet** before storing. Encryption key in server env only, never in DB.
+There are **two separate credential stores**. Never confuse them.
 
+### 1. Platform Settings (`platform_configs` table) — owner/admin only
+- **Scope:** whole deployment (all organisations share these)
+- **Who sets it:** owner via `/v1/admin/platform-configs` → "Platform Settings" page in UI
+- **What goes here:**
+  - OAuth app registrations: Google OAuth client_id/secret, Slack OAuth app
+  - Observability: LangSmith tracing key, Sentry DSN
+  - Default voice/telephony credentials: Twilio, Deepgram, Cartesia, ElevenLabs
+- **Purpose of defaults:** lets orgs use voice without bringing their own keys first
+
+### 2. Integrations (`integrations` table) — per organisation
+- **Scope:** per organisation — each org has its own set
+- **Who sets it:** org members via `/v1/integrations` → "Integrations" page in UI
+- **Categories:** `llm`, `stt`, `tts`, `telephony`, `app`, `infrastructure`, `messaging`
+- **What goes here:** org's own OpenAI key, org's Deepgram key, HubSpot token, Google OAuth token, Twilio account, etc.
+- **Priority:** org Integration credentials **always take priority** over platform_configs defaults
+
+### Credential loading at session start
 ```python
-# Store
-encrypted = fernet.encrypt(api_key.encode()).decode()
-
-# Load at session start — passed into every node via GraphBuilder
-org_keys = {k.service: fernet.decrypt(k.encrypted_key) for k in keys}
+# org_keys built from integrations table — passed into every node via GraphBuilder
+org_keys = {i.provider: decrypt(i.credentials) for i in org_integrations}
 graph = GraphBuilder().build(graph_config, org_keys)
+# If org_keys["deepgram"] missing → voice pipeline falls back to platform_configs["deepgram"]
 ```
 
-**Supported providers:**
-- **LLM:** OpenAI, Anthropic, Gemini, Groq, Ollama (local), AWS Bedrock, Azure OpenAI, Mistral
-- **STT:** Deepgram Nova 2 (default), Whisper, Azure, Google, AssemblyAI, Sarvam AI (Indian languages)
-- **TTS:** ElevenLabs (default), Azure, Google, OpenAI TTS, Cartesia
-- **Telephony:** Twilio (default), Vonage, Telnyx
-- **Vector DB:** pgvector (default), Pinecone, Qdrant, Weaviate, Chroma, Milvus
-- **WhatsApp:** Gupshup (India, cheaper), Twilio WhatsApp, Interakt
+All credentials encrypted with **Fernet** before storing. Encryption key in `FERNET_KEY` env var only, never in DB or API responses.
+
+**There is NO table called `api_keys`.** That name is obsolete — it was replaced by the `integrations` table.
+
+### Supported providers (Integrations)
+- **LLM:** OpenAI, Anthropic, Gemini, Groq, Mistral, Azure OpenAI
+- **STT:** Deepgram (Nova 3), OpenAI Whisper, Sarvam AI (Indian languages)
+- **TTS:** Cartesia (Sonic), ElevenLabs, Sarvam AI (Indian languages)
+- **Telephony:** Twilio, Telnyx, Vonage
+- **Apps:** Google (OAuth — Calendar, Gmail, Drive), Slack, HubSpot, Zoho CRM, Razorpay, Stripe, Freshdesk
+- **Infrastructure:** Pinecone, Qdrant, Weaviate
+- **Messaging:** Gupshup (WhatsApp, India-first)
 
 ---
 
@@ -605,8 +625,21 @@ agents          (id, org_id, name, system_prompt, voice_id, language,
                  graph_config JSONB,    ← visual graph stored here
                  simple_mode BOOL, created_at, deleted_at)
 
-api_keys        (id, org_id, service, encrypted_key, last_tested_at)
-phone_numbers   (id, org_id, agent_id, number, provider, sid)
+-- Per-org credentials (BYOK) — see Credential Architecture section above
+integrations    (id, org_id, provider, category, display_name,
+                 credentials TEXT,      ← Fernet-encrypted JSON
+                 config JSONB,          ← non-secret fields (endpoint, index_name, etc.)
+                 status, meta JSONB,    ← key_hint, account_email, last_tested_at
+                 created_at, deleted_at)
+-- Unique index: (org_id, provider) WHERE deleted_at IS NULL
+
+-- Deployment-wide credentials (admin only) — see Credential Architecture section above
+platform_configs (id, provider, credentials TEXT, config JSONB,
+                  enabled BOOL, meta JSONB, created_at, updated_at)
+-- UNIQUE: provider
+
+phone_numbers   (id, org_id, agent_id, number, provider, sid,
+                 voice_config JSONB)   ← per-number STT/TTS/language overrides
 
 sessions        (id, org_id, agent_id, channel, user_id,
                  state_snapshot JSONB,  ← full SessionState at end

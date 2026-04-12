@@ -119,11 +119,12 @@ PLATFORM_PROVIDER_SCHEMAS: dict[str, dict] = {
         ],
     },
     # ── Voice providers ────────────────────────────────────────────────────────
-    # Platform-level defaults — orgs can override by adding their own keys in Integrations.
+    # Default credentials for this deployment. Each org can connect their own credentials
+    # via Integrations; those take priority over these platform-level defaults.
     "twilio": {
         "display_name": "Twilio",
         "category": "voice",
-        "description": "Platform-level Twilio account for inbound/outbound calls. Orgs can bring their own Twilio credentials via Integrations.",
+        "description": "Default Twilio account for this deployment. Used for inbound/outbound calls unless an organisation has connected their own Twilio credentials.",
         "fields": [
             {
                 "key": "account_sid",
@@ -152,7 +153,7 @@ PLATFORM_PROVIDER_SCHEMAS: dict[str, dict] = {
     "deepgram": {
         "display_name": "Deepgram",
         "category": "voice",
-        "description": "STT (Nova-2) and TTS (Aura) for voice calls. One API key covers both. Used as default STT and TTS fallback when Cartesia is not configured.",
+        "description": "Default STT provider for this deployment. Used for voice calls where an organisation has not connected their own Deepgram credentials.",
         "fields": [
             {
                 "key": "api_key",
@@ -166,7 +167,7 @@ PLATFORM_PROVIDER_SCHEMAS: dict[str, dict] = {
     "cartesia": {
         "display_name": "Cartesia",
         "category": "voice",
-        "description": "Low-latency text-to-speech. First-choice TTS provider — used when an org has not connected their own key.",
+        "description": "Default TTS provider for this deployment. Used for voice calls where an organisation has not connected their own Cartesia credentials.",
         "fields": [
             {
                 "key": "api_key",
@@ -180,7 +181,7 @@ PLATFORM_PROVIDER_SCHEMAS: dict[str, dict] = {
     "elevenlabs": {
         "display_name": "ElevenLabs",
         "category": "voice",
-        "description": "Realistic TTS with voice cloning support. Used as fallback when Cartesia is not configured.",
+        "description": "Default ElevenLabs TTS for this deployment. Used for voice calls where an organisation has not connected their own ElevenLabs credentials.",
         "fields": [
             {
                 "key": "api_key",
