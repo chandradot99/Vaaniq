@@ -48,6 +48,16 @@ class Settings(BaseSettings):
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
 
+    # ── Telnyx webhook signature verification ────────────────────────────────
+    # Ed25519 public key from Telnyx Mission Control Portal → API Keys → Webhook Signing Key
+    # Base64-encoded. Leave empty to disable signature verification (dev only).
+    telnyx_public_key: str = ""
+
+    # ── Vonage webhook signature verification ────────────────────────────────
+    # Signature secret from Vonage Dashboard → Your Applications → Edit → Capabilities → Voice
+    # Leave empty to disable signature verification (dev only).
+    vonage_signature_secret: str = ""
+
     # ── LangSmith tracing ─────────────────────────────────────────────────────
     # LangChain reads these from os.environ — setup_observability() pushes them there.
     langsmith_api_key: Optional[str] = None

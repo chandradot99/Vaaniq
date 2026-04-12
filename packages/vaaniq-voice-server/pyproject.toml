@@ -1,7 +1,7 @@
 [project]
 name = "vaaniq-voice-server"
 version = "0.1.0"
-description = "Standalone voice pipeline server — Twilio webhooks + Pipecat pipeline"
+description = "Standalone voice pipeline server — LiveKit worker + telephony webhooks (Twilio / Telnyx / Vonage)"
 requires-python = ">=3.12"
 dependencies = [
     "vaaniq-voice>=0.1.0",

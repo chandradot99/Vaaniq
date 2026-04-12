@@ -34,6 +34,10 @@ def create_stt_plugin(context: VoiceCallContext):
         return _build_sarvam(org_keys, language)
     if provider == "assemblyai":
         return _build_assemblyai(org_keys, language)
+    if provider == "openai":
+        return _build_openai(org_keys, language, model)
+    if provider == "azure":
+        return _build_azure_stt(org_keys, language)
 
     raise ProviderNotFoundError("stt", provider)
 
@@ -74,6 +78,44 @@ def _build_assemblyai(org_keys: dict, language: str):
 
     api_key = _extract_key(org_keys, "assemblyai")
     return assemblyai.STT(api_key=api_key)
+
+
+# ── OpenAI Whisper ────────────────────────────────────────────────────────────
+
+def _build_openai(org_keys: dict, language: str, model: str | None):
+    from livekit.plugins import openai as lk_openai
+
+    api_key = _extract_key(org_keys, "openai")
+    # BCP-47 codes like "en-US" → Whisper uses ISO 639-1 "en"
+    whisper_lang = language.split("-")[0] if language else "en"
+    return lk_openai.STT(
+        api_key=api_key,
+        language=whisper_lang,
+        model=model or "gpt-4o-mini-transcribe",
+    )
+
+
+# ── Azure Speech (STT) ────────────────────────────────────────────────────────
+
+def _build_azure_stt(org_keys: dict, language: str):
+    from livekit.plugins import azure
+
+    creds = org_keys.get("azure", {})
+    if isinstance(creds, str):
+        speech_key = creds
+        region = "eastus"
+    else:
+        speech_key = creds.get("api_key") or creds.get("speech_key", "")
+        region = creds.get("region", "eastus")
+
+    if not speech_key:
+        raise MissingAPIKeyError("azure")
+
+    return azure.STT(
+        speech_key=speech_key,
+        speech_region=region,
+        language=language or "en-US",
+    )
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

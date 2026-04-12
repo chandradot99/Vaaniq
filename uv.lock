@@ -4153,6 +4153,7 @@ dependencies = [
     { name = "structlog" },
     { name = "vaaniq-core" },
     { name = "vaaniq-graph" },
+    { name = "websockets" },
 ]
 
 [package.optional-dependencies]
@@ -4175,6 +4176,7 @@ requires-dist = [
     { name = "structlog", specifier = ">=24.0.0" },
     { name = "vaaniq-core", editable = "packages/vaaniq-core" },
     { name = "vaaniq-graph", editable = "packages/vaaniq-graph" },
+    { name = "websockets", specifier = ">=13.0" },
 ]
 provides-extras = ["dev"]
 

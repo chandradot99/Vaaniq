@@ -174,9 +174,9 @@ uv run alembic -c packages/vaaniq-server/alembic.ini upgrade head
 | Category | Providers |
 |---|---|
 | LLM | OpenAI, Anthropic, Gemini, Groq, Ollama, AWS Bedrock, Azure OpenAI, Mistral |
-| STT | Deepgram Nova 2, Whisper, Azure, Google, AssemblyAI, Sarvam AI |
-| TTS | ElevenLabs, Azure, Google, OpenAI TTS, Cartesia |
-| Telephony | Twilio, Vonage, Telnyx |
+| STT | Deepgram, OpenAI Whisper, Azure Speech, AssemblyAI, Sarvam AI (11 Indian languages) |
+| TTS | ElevenLabs, Cartesia, Azure, OpenAI TTS, Deepgram Aura, Sarvam AI (11 Indian languages) |
+| Telephony | Twilio, Telnyx, Vonage |
 | Vector DB | pgvector (default), Pinecone, Qdrant, Weaviate, Chroma, Milvus |
 | WhatsApp | Gupshup, Twilio WhatsApp, Interakt |
 | CRM | HubSpot, Zoho, Salesforce, Pipedrive |

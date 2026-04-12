@@ -168,8 +168,36 @@ def test_key_as_dict_with_api_key_field():
 # ── Unknown provider ──────────────────────────────────────────────────────────
 
 def test_unknown_provider_raises():
-    ctx = _ctx(tts_provider="openai", org_keys={"openai": "key"})
+    ctx = _ctx(tts_provider="google", org_keys={"google": "key"})
     with pytest.raises(ProviderNotFoundError) as exc_info:
         create_tts_plugin(ctx)
-    assert exc_info.value.provider == "openai"
+    assert exc_info.value.provider == "google"
     assert exc_info.value.category == "tts"
+
+
+def test_openai_tts_missing_key_raises():
+    ctx = _ctx(tts_provider="openai", org_keys={})
+    with pytest.raises(MissingAPIKeyError):
+        create_tts_plugin(ctx)
+
+
+def test_openai_tts_created():
+    from livekit.plugins.openai import TTS
+
+    ctx = _ctx(tts_provider="openai", org_keys={"openai": "sk-test-key"})
+    plugin = create_tts_plugin(ctx)
+    assert isinstance(plugin, TTS)
+
+
+def test_openai_tts_custom_voice_and_model():
+    from livekit.plugins.openai import TTS
+
+    ctx = _ctx(
+        tts_provider="openai",
+        tts_model="tts-1-hd",
+        tts_speed=1.2,
+        org_keys={"openai": "sk-test-key"},
+    )
+    # voice_id is None here — defaults to "alloy"
+    plugin = create_tts_plugin(ctx)
+    assert isinstance(plugin, TTS)

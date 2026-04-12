@@ -40,6 +40,8 @@ def create_tts_plugin(context: VoiceCallContext):
         return _build_deepgram(org_keys, voice_id, model)
     if provider == "sarvam":
         return _build_sarvam(org_keys, voice_id, language)
+    if provider == "openai":
+        return _build_openai(org_keys, voice_id, model, speed)
 
     raise ProviderNotFoundError("tts", provider)
 
@@ -150,6 +152,27 @@ def _build_sarvam(org_keys: dict, voice_id: str | None, language: str):
 
     api_key = _extract_key(org_keys, "sarvam")
     return SarvamTTS(api_key=api_key, voice=voice_id, language=language)
+
+
+# ── OpenAI TTS ────────────────────────────────────────────────────────────────
+
+def _build_openai(
+    org_keys: dict,
+    voice_id: str | None,
+    model: str | None,
+    speed: float | None,
+):
+    from livekit.plugins import openai as lk_openai
+
+    api_key = _extract_key(org_keys, "openai")
+    kwargs: dict = {
+        "api_key": api_key,
+        "voice": voice_id or "alloy",
+        "model": model or "tts-1",
+    }
+    if speed is not None:
+        kwargs["speed"] = speed
+    return lk_openai.TTS(**kwargs)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

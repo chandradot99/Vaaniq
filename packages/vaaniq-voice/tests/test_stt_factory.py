@@ -86,6 +86,74 @@ def test_sarvam_missing_key_raises():
     assert exc_info.value.provider == "sarvam"
 
 
+# ── OpenAI Whisper ────────────────────────────────────────────────────────────
+
+def test_openai_stt_created():
+    from livekit.plugins.openai import STT
+
+    ctx = _ctx(stt_provider="openai", org_keys={"openai": "sk-test-key"})
+    plugin = create_stt_plugin(ctx)
+    assert isinstance(plugin, STT)
+
+
+def test_openai_stt_custom_model():
+    from livekit.plugins.openai import STT
+
+    ctx = _ctx(
+        stt_provider="openai",
+        stt_model="gpt-4o-transcribe",
+        org_keys={"openai": "sk-test-key"},
+    )
+    plugin = create_stt_plugin(ctx)
+    assert isinstance(plugin, STT)
+
+
+def test_openai_stt_language_truncation():
+    """BCP-47 'en-US' should be passed to OpenAI as 'en' (ISO 639-1)."""
+    from livekit.plugins.openai import STT
+
+    ctx = _ctx(
+        stt_provider="openai",
+        agent_language="en-US",
+        org_keys={"openai": "sk-test-key"},
+    )
+    plugin = create_stt_plugin(ctx)
+    assert isinstance(plugin, STT)
+
+
+def test_openai_missing_key_raises():
+    ctx = _ctx(stt_provider="openai", org_keys={})
+    with pytest.raises(MissingAPIKeyError):
+        create_stt_plugin(ctx)
+
+
+# ── Azure STT ─────────────────────────────────────────────────────────────────
+
+def test_azure_stt_created():
+    from livekit.plugins.azure import STT
+
+    ctx = _ctx(
+        stt_provider="azure",
+        org_keys={"azure": {"api_key": "azure-speech-key", "region": "eastus"}},
+    )
+    plugin = create_stt_plugin(ctx)
+    assert isinstance(plugin, STT)
+
+
+def test_azure_stt_string_key():
+    from livekit.plugins.azure import STT
+
+    ctx = _ctx(stt_provider="azure", org_keys={"azure": "azure-speech-key"})
+    plugin = create_stt_plugin(ctx)
+    assert isinstance(plugin, STT)
+
+
+def test_azure_stt_missing_key_raises():
+    ctx = _ctx(stt_provider="azure", org_keys={})
+    with pytest.raises(MissingAPIKeyError):
+        create_stt_plugin(ctx)
+
+
 # ── Unknown provider ──────────────────────────────────────────────────────────
 
 def test_unknown_provider_raises():
