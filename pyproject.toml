@@ -7,19 +7,18 @@ members = [
     "packages/vaaniq-tools",
     "packages/vaaniq-channels",
     "packages/vaaniq-server",
-    # vaaniq-voice-server is excluded from this workspace — it deploys
-    # independently to Fly.io and declares its own path dependencies.
-    # Run: cd packages/vaaniq-voice-server && uv sync  (for local dev)
+    "packages/vaaniq-voice-server",
 ]
 
 [tool.uv.sources]
-vaaniq-core     = { workspace = true }
-vaaniq-graph    = { workspace = true }
-vaaniq-voice    = { workspace = true }
-vaaniq-rag      = { workspace = true }
-vaaniq-tools    = { workspace = true }
-vaaniq-channels = { workspace = true }
-vaaniq-server   = { workspace = true }
+vaaniq-core         = { workspace = true }
+vaaniq-graph        = { workspace = true }
+vaaniq-voice        = { workspace = true }
+vaaniq-rag          = { workspace = true }
+vaaniq-tools        = { workspace = true }
+vaaniq-channels     = { workspace = true }
+vaaniq-server       = { workspace = true }
+vaaniq-voice-server = { workspace = true }
 
 [tool.ruff]
 line-length = 120

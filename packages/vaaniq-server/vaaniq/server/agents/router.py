@@ -7,6 +7,7 @@ from vaaniq.server.agents.schemas import (
     CreateAgentRequest,
     UpdateAgentRequest,
     UpdateGraphRequest,
+    VoicePreviewResponse,
 )
 from vaaniq.server.agents.service import AgentService
 from vaaniq.server.auth.dependencies import CurrentUser, get_current_user
@@ -58,6 +59,25 @@ async def update_graph(
     db: AsyncSession = Depends(get_db),
 ) -> AgentResponse:
     return await AgentService(db).update_graph(agent.id, current.org_id, body.graph_config)
+
+
+@router.post("/{agent_id}/voice-preview", response_model=VoicePreviewResponse)
+async def start_voice_preview(
+    agent: Agent = Depends(valid_agent),
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> VoicePreviewResponse:
+    """
+    Start a browser-based voice preview for this agent.
+
+    Creates a LiveKit room, dispatches the voice worker, and returns a
+    participant token so the browser can join and talk to the agent.
+    No phone or Twilio needed — uses the LiveKit browser SDK.
+    """
+    return await AgentService(db).start_voice_preview(
+        agent=agent,
+        user_identity=current.user.id,
+    )
 
 
 @router.delete("/{agent_id}", status_code=status.HTTP_204_NO_CONTENT)

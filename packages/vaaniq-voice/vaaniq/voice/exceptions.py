@@ -6,12 +6,8 @@ class VoiceConfigError(VoiceError):
     """Raised when voice pipeline configuration is invalid (missing provider, bad keys, etc.)."""
 
 
-class PipelineError(VoiceError):
-    """Raised when the Pipecat pipeline fails to start or crashes mid-call."""
-
-
-class TransportError(VoiceError):
-    """Raised when the telephony WebSocket transport encounters an error."""
+class AgentError(VoiceError):
+    """Raised when the LiveKit agent fails to start or crashes mid-call."""
 
 
 class ProviderNotFoundError(VoiceConfigError):

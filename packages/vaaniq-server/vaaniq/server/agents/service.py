@@ -1,3 +1,5 @@
+import json
+import uuid
 from typing import Any
 
 import structlog
@@ -9,7 +11,9 @@ from vaaniq.server.agents.schemas import (
     AgentResponse,
     CreateAgentRequest,
     UpdateAgentRequest,
+    VoicePreviewResponse,
 )
+from vaaniq.server.voice.exceptions import AgentNotConfigured
 
 log = structlog.get_logger()
 
@@ -167,6 +171,109 @@ class AgentService:
         log.info("agent_graph_updated", org_id=org_id, agent_id=agent_id, graph_version=new_version)
         return _to_response(agent)
 
+    async def start_voice_preview(
+        self,
+        agent: Agent,
+        user_identity: str,
+    ) -> VoicePreviewResponse:
+        """
+        Start a browser-based voice preview session for an agent.
+
+        Creates a DB session, a LiveKit room, dispatches the voice worker,
+        and returns a participant token so the browser can join immediately.
+
+        Args:
+            agent:         The validated Agent ORM object.
+            user_identity: A stable identifier for the previewing user (e.g. user ID).
+                           Used as the LiveKit participant identity.
+        """
+        if not agent.graph_config:
+            raise AgentNotConfigured(str(agent.id))
+
+        from vaaniq.server.core.config import settings
+
+        livekit_url: str = getattr(settings, "livekit_url", "")
+        livekit_api_key: str = getattr(settings, "livekit_api_key", "")
+        livekit_api_secret: str = getattr(settings, "livekit_api_secret", "")
+
+        # ── 1. Create preview session in DB ───────────────────────────────────
+        session_id = str(uuid.uuid4())
+        from vaaniq.server.models.session import Session, ChannelEnum, SessionStatus
+
+        session = Session(
+            id=session_id,
+            org_id=agent.org_id,
+            agent_id=agent.id,
+            channel=ChannelEnum.voice,
+            user_id=f"preview:{user_identity}",
+            status=SessionStatus.active,
+            meta={"preview": True, "previewed_by": user_identity},
+        )
+        self.db.add(session)
+        await self.db.commit()
+
+        log.info("voice_preview_session_created", session_id=session_id, agent_id=agent.id)
+
+        # Room name = session_id so the worker can load context from DB.
+        room_name = session_id
+
+        # ── 2. Create LiveKit room + dispatch worker ───────────────────────────
+        if livekit_api_key and livekit_api_secret:
+            try:
+                from livekit.api import (
+                    CreateAgentDispatchRequest,
+                    CreateRoomRequest,
+                    LiveKitAPI,
+                )
+
+                async with LiveKitAPI(
+                    url=livekit_url,
+                    api_key=livekit_api_key,
+                    api_secret=livekit_api_secret,
+                ) as lk:
+                    await lk.room.create_room(
+                        CreateRoomRequest(
+                            name=room_name,
+                            metadata=json.dumps({"session_id": session_id}),
+                            empty_timeout=600,   # 10 min — clean up if browser never connects
+                            max_participants=5,
+                        )
+                    )
+                    # Explicit dispatch — tells the worker to join this specific room.
+                    # The agent_name must match what the worker registers as.
+                    await lk.agent_dispatch.create_dispatch(
+                        CreateAgentDispatchRequest(
+                            agent_name="vaaniq-voice",
+                            room=room_name,
+                        )
+                    )
+
+                log.info("voice_preview_room_created", session_id=session_id, room=room_name)
+            except Exception as exc:
+                log.warning(
+                    "voice_preview_room_create_failed",
+                    session_id=session_id,
+                    error=str(exc),
+                )
+        else:
+            log.warning("voice_preview_livekit_not_configured", session_id=session_id)
+
+        # ── 3. Generate participant token ─────────────────────────────────────
+        token = _make_livekit_token(
+            api_key=livekit_api_key,
+            api_secret=livekit_api_secret,
+            room_name=room_name,
+            identity=f"preview-{user_identity}",
+            display_name="Preview User",
+        )
+
+        return VoicePreviewResponse(
+            session_id=session_id,
+            room_name=room_name,
+            token=token,
+            livekit_url=livekit_url,
+        )
+
     async def delete(self, agent_id: str, org_id: str) -> None:
         agent = await self.repo.get_by_id(agent_id)
         if not agent:
@@ -178,3 +285,40 @@ class AgentService:
         await self.db.commit()
 
         log.info("agent_deleted", org_id=org_id, agent_id=agent_id)
+
+
+def _make_livekit_token(
+    *,
+    api_key: str,
+    api_secret: str,
+    room_name: str,
+    identity: str,
+    display_name: str,
+) -> str:
+    """
+    Generate a short-lived LiveKit participant token for browser access.
+
+    The token grants publish + subscribe rights in the specified room only.
+    TTL is 1 hour — enough for an agent preview session.
+    """
+    if not api_key or not api_secret:
+        # Return an empty token when LiveKit is not configured (e.g. unit tests).
+        return ""
+
+    from livekit.api import AccessToken, VideoGrants
+
+    token = (
+        AccessToken(api_key=api_key, api_secret=api_secret)
+        .with_identity(identity)
+        .with_name(display_name)
+        .with_grants(
+            VideoGrants(
+                room_join=True,
+                room=room_name,
+                can_publish=True,
+                can_subscribe=True,
+            )
+        )
+        .to_jwt()
+    )
+    return token

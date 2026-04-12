@@ -63,6 +63,14 @@ class UpdateGraphRequest(CustomModel):
         return v
 
 
+class VoicePreviewResponse(CustomModel):
+    """Returned by POST /v1/agents/{agent_id}/voice-preview."""
+    session_id: str          # The preview session ID (for debugging / transcript lookup)
+    room_name: str           # LiveKit room name the browser should join
+    token: str               # LiveKit participant token — pass to livekit-client
+    livekit_url: str         # WebSocket URL for the LiveKit server
+
+
 class AgentResponse(CustomModel):
     id: str
     org_id: str

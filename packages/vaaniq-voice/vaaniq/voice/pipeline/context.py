@@ -5,8 +5,9 @@ from typing import Optional
 @dataclass
 class VoiceCallContext:
     """
-    Immutable snapshot of everything the pipeline needs at call start.
-    Resolved once at WebSocket connect time; passed into pipeline builder.
+    Immutable snapshot of everything the voice agent needs at call start.
+    Resolved once per call by context_builder.py and passed to the LiveKit
+    worker which runs the agent in the room.
 
     Rule: all fields without defaults must come before fields with defaults
     (Python dataclass requirement).
@@ -31,11 +32,10 @@ class VoiceCallContext:
     # Telephony provider
     telephony_provider: str = "twilio"  # "twilio" | "vonage" | "telnyx"
 
-    # Call identifiers (provider-agnostic names; populated by context_builder)
-    call_sid: str = ""
-    stream_sid: str = ""              # set after the provider sends the 'start' message
+    # Call identifiers
+    call_sid: str = ""                # Twilio CallSid (for status lookups)
     from_number: str = ""             # caller's phone number
-    to_number: str = ""               # org's number
+    to_number: str = ""               # org's number (the dialled number)
 
     # Twilio-specific credentials (present when telephony_provider == "twilio")
     twilio_account_sid: str = ""

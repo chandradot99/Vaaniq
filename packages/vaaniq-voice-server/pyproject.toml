@@ -19,5 +19,5 @@ dev = ["pytest>=8.0", "pytest-asyncio>=0.24"]
 # For Fly.io Docker builds the Dockerfile copies the full packages/ tree
 # so these paths resolve correctly inside the container.
 [tool.uv.sources]
-vaaniq-voice  = { path = "../vaaniq-voice" }
-vaaniq-server = { path = "../vaaniq-server" }
+vaaniq-voice  = { workspace = true }
+vaaniq-server = { workspace = true }

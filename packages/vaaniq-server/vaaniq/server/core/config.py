@@ -1,14 +1,11 @@
-from pathlib import Path
 from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-# Resolves to packages/vaaniq-server/.env regardless of working directory
-_ENV_FILE = Path(__file__).parents[3] / ".env"
+from vaaniq.server.core.env import ENV_FILE
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=_ENV_FILE, extra="ignore")
+    model_config = SettingsConfigDict(env_file=ENV_FILE, extra="ignore")
 
     database_url: str = "postgresql+asyncpg://vaaniq:vaaniq@localhost:5432/vaaniq"
     database_replica_url: Optional[str] = None
@@ -21,6 +18,14 @@ class Settings(BaseSettings):
     backend_url: str = "http://localhost:8000"
     voice_server_url: str = "http://localhost:8001"  # VOICE_SERVER_URL — Fly.io URL in production
     frontend_url: str = "http://localhost:3000"
+
+    # ── LiveKit (voice pipeline) ──────────────────────────────────────────────
+    # Cloud: wss://<project>.livekit.cloud  |  Self-hosted: wss://your-livekit:7880
+    livekit_url: str = "ws://localhost:7880"
+    livekit_api_key: str = ""
+    livekit_api_secret: str = ""
+    # SIP domain: <project>.sip.livekit.cloud (derived automatically if not set)
+    livekit_sip_domain: str = ""
 
     # ── OAuth provider credentials ────────────────────────────────────────────
     # Self-hosted deployments must register their own OAuth apps with each provider

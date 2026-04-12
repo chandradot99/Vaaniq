@@ -1,25 +1,20 @@
 [project]
 name = "vaaniq-voice"
 version = "0.1.0"
-description = "Voice pipeline for Vaaniq (Pipecat PSTN + LiveKit WebRTC)"
+description = "Voice pipeline for Vaaniq — LiveKit Agents (PSTN + WebRTC)"
 requires-python = ">=3.12"
 dependencies = [
     "vaaniq-core>=0.1.0",
     "vaaniq-graph>=0.1.0",
-    # Pipecat core + Twilio transport
-    "pipecat-ai[cartesia,deepgram,elevenlabs,silero]>=0.0.93",
-    # STT providers
-    "deepgram-sdk>=3.0,<6",
-    "assemblyai>=0.30",
-    # TTS providers
-    "cartesia>=1.0",
-    "elevenlabs>=1.0",
+    # LiveKit Agents + plugins
+    "livekit-agents[deepgram,cartesia,elevenlabs,silero,azure,openai]>=1.5",
+    # Azure Speech SDK (for Azure TTS — livekit-plugins-azure wraps it)
     "azure-cognitiveservices-speech>=1.40",
-    # Twilio
-    "twilio>=9.0",
-    # HTTP
+    # HTTP — Sarvam AI STT/TTS calls
     "httpx>=0.27",
     "pydantic>=2.0",
+    "structlog>=24.0.0",
+    "python-dotenv>=1.0",
 ]
 
 [project.optional-dependencies]

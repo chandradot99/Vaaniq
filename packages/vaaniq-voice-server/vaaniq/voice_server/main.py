@@ -1,35 +1,40 @@
 """
-vaaniq-voice-server — standalone Pipecat voice pipeline server.
+vaaniq-voice-server — LiveKit voice pipeline worker + Twilio webhook server.
 
-Handles all Twilio voice traffic (inbound TwiML, outbound TwiML, status
-callbacks, Media Streams WebSocket). Deployed close to Twilio's media
-edge (Fly.io iad) while vaaniq-server runs on Railway.
+This process does two things:
+  1. FastAPI server: handles Twilio webhook callbacks (inbound, status, recording)
+  2. LiveKit worker: connects to LiveKit and processes voice call jobs
+
+When Twilio calls arrive:
+  Twilio → POST /webhooks/twilio/voice/inbound → vaaniq-server creates LiveKit room
+         → TwiML dials into LiveKit SIP → LiveKit dispatches job to THIS worker
+         → worker runs VaaniqVoiceAgent until call ends
 
 Local development:
     uv run uvicorn vaaniq.voice_server.main:app --port 8001 --reload
+    uv run python -m vaaniq.voice.worker --dev   ← separate terminal for worker
 
 Production (Fly.io):
     fly deploy  (fly.toml points here)
+    CMD runs uvicorn + worker together via the lifespan hook
 """
 
+import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import structlog
-from fastapi import FastAPI
+import vaaniq.server.agents.models  # noqa: F401
 
+# Register all SQLAlchemy models so Base.metadata has the full table graph.
+import vaaniq.server.auth.models  # noqa: F401
+import vaaniq.server.models.integration  # noqa: F401
+import vaaniq.server.models.session  # noqa: F401
+import vaaniq.server.voice.models  # noqa: F401
+from fastapi import FastAPI
 from vaaniq.server.core.config import settings
 from vaaniq.server.core.observability import setup_observability
 from vaaniq.voice_server.router import router as voice_router
-
-# Register all SQLAlchemy models so Base.metadata has the full table graph
-# and foreign key resolution works correctly (e.g. sessions.org_id → organizations).
-# vaaniq-server/main.py does the same thing via router imports; we do it explicitly here.
-import vaaniq.server.auth.models          # noqa: F401 — users, organizations, org_members
-import vaaniq.server.agents.models        # noqa: F401 — agents
-import vaaniq.server.models.session       # noqa: F401 — sessions
-import vaaniq.server.voice.models         # noqa: F401 — phone_numbers
-import vaaniq.server.models.integration    # noqa: F401 — api_keys / integrations
 
 log = structlog.get_logger()
 
@@ -41,12 +46,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from vaaniq.server.admin.platform_cache import reload as reload_platform_cache
     from vaaniq.server.chat.checkpointer import setup_checkpointer
     from vaaniq.server.core.database import async_session_factory
-    from vaaniq.voice.services.vad import preload_vad
 
-    # 1. Set up the AsyncPostgresSaver — must happen before prewarm so graphs
-    #    are compiled with the Postgres checkpointer, not MemorySaver.
-    #    State written during voice calls survives server restarts and is
-    #    readable by any machine in a multi-instance deployment.
+    # 1. Set up AsyncPostgresSaver — multi-turn memory persists across restarts.
     await setup_checkpointer()
     log.info("checkpointer_ready", checkpointer_type="AsyncPostgresSaver")
 
@@ -54,26 +55,70 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # 2. Load platform config (Twilio creds, webhook URLs) into memory cache.
         await reload_platform_cache(db)
 
-        # 3. Pre-load Silero VAD model — pays the ~100ms disk read once at startup
-        #    instead of on the first caller's call.
-        await preload_vad()
-
-        # 4. Pre-compile all active agents' graphs into the in-process cache so
-        #    the first call to each agent doesn't pay compilation cost.
+        # 3. Pre-compile active agents' graphs into cache — avoids compile cost
+        #    on the first call to each agent.
         await _prewarm_graph_cache(db)
+
+    # 4. Start the LiveKit worker as a background task.
+    #    The worker connects to LiveKit and listens for job dispatches.
+    worker_task = asyncio.create_task(_run_livekit_worker(), name="livekit_worker")
 
     log.info("voice_server_started", voice_server_url=settings.voice_server_url)
     yield
+
+    # Shutdown: cancel worker gracefully.
+    worker_task.cancel()
+    try:
+        await worker_task
+    except asyncio.CancelledError:
+        pass
     log.info("voice_server_stopped")
+
+
+async def _run_livekit_worker() -> None:
+    """
+    Run the LiveKit worker in the background alongside the FastAPI server.
+
+    Bypasses cli.run_app() (which parses sys.argv and breaks when called from
+    uvicorn) and drives AgentServer.run() directly. The worker connects to
+    LiveKit and waits for job dispatches — each incoming call becomes one job.
+    """
+    try:
+        from livekit.agents import WorkerOptions
+        from livekit.agents.worker import AgentServer
+        from vaaniq.voice.worker import entrypoint
+
+        livekit_url = getattr(settings, "livekit_url", "")
+        livekit_api_key = getattr(settings, "livekit_api_key", "")
+        livekit_api_secret = getattr(settings, "livekit_api_secret", "")
+
+        if not all([livekit_url, livekit_api_key, livekit_api_secret]):
+            log.warning(
+                "livekit_worker_not_started",
+                reason="LIVEKIT_URL / LIVEKIT_API_KEY / LIVEKIT_API_SECRET not set",
+            )
+            return
+
+        opts = WorkerOptions(
+            entrypoint_fnc=entrypoint,
+            agent_name="vaaniq-voice",  # must match CreateAgentDispatchRequest(agent_name=...)
+            ws_url=livekit_url,
+            api_key=livekit_api_key,
+            api_secret=livekit_api_secret,
+        )
+        server = AgentServer.from_server_options(opts)
+        await server.run()
+    except asyncio.CancelledError:
+        log.info("livekit_worker_stopped")
+        raise
+    except Exception:
+        log.exception("livekit_worker_crashed")
 
 
 async def _prewarm_graph_cache(db) -> None:
     """
-    Compile all active agents' graphs at startup and store them in the cache.
+    Compile all active agents' graphs at startup and store in cache.
     Best-effort: individual failures are logged but don't block startup.
-
-    The Postgres checkpointer must be set up before this is called so graphs
-    are compiled with AsyncPostgresSaver, not MemorySaver.
     """
     from vaaniq.graph.cache import get_or_compile
     from vaaniq.server.agents.repository import AgentRepository
@@ -83,7 +128,7 @@ async def _prewarm_graph_cache(db) -> None:
     try:
         checkpointer = get_checkpointer()
     except RuntimeError:
-        checkpointer = None  # local dev without Postgres — MemorySaver fallback
+        checkpointer = None
 
     agents = await AgentRepository(db).list_all_active()
     if not agents:
@@ -115,7 +160,6 @@ app = FastAPI(
     title="Vaaniq Voice Server",
     version="0.1.0",
     lifespan=lifespan,
-    # Only expose docs in development
     docs_url="/docs" if settings.environment == "development" else None,
     redoc_url=None,
 )

@@ -28,6 +28,13 @@ from vaaniq.server.chat.checkpointer import get_checkpointer, make_thread_id
 from vaaniq.server.core.database import async_session_factory
 from vaaniq.server.webhooks.repository import SessionRepository
 
+# Import all models so SQLAlchemy's Base.metadata knows every table before any
+# session commits. Without these imports, FK columns like sessions.org_id →
+# organizations.id fail with NoReferencedTableError during flush/commit because
+# the 'organizations' and 'agents' tables aren't registered in the metadata.
+import vaaniq.server.auth.models  # noqa: F401 — registers User, Organization, OrgMember
+import vaaniq.server.agents.models  # noqa: F401 — registers Agent
+
 log = structlog.get_logger()
 
 

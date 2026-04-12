@@ -1,5 +1,4 @@
 from datetime import timedelta
-from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from vaaniq.server.auth.constants import (
@@ -7,13 +6,11 @@ from vaaniq.server.auth.constants import (
     DEFAULT_JWT_ALGORITHM,
     DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS,
 )
-
-# Resolves to packages/vaaniq-server/.env regardless of working directory
-_ENV_FILE = Path(__file__).parents[3] / ".env"
+from vaaniq.server.core.env import ENV_FILE
 
 
 class AuthConfig(BaseSettings):
-    model_config = SettingsConfigDict(env_file=_ENV_FILE, extra="ignore")
+    model_config = SettingsConfigDict(env_file=ENV_FILE, extra="ignore")
 
     secret_key: str
     jwt_algorithm: str = DEFAULT_JWT_ALGORITHM
