@@ -192,6 +192,20 @@ PLATFORM_PROVIDER_SCHEMAS: dict[str, dict] = {
             },
         ],
     },
+    "sarvam": {
+        "display_name": "Sarvam AI",
+        "category": "voice",
+        "description": "Default STT and TTS for Indian languages (Hindi, Tamil, Telugu, Marathi, Bengali, Gujarati, Kannada, Malayalam). Used for voice calls where an organisation has not connected their own Sarvam credentials.",
+        "fields": [
+            {
+                "key": "api_key",
+                "label": "API Key",
+                "secret": True,
+                "required": True,
+                "placeholder": "your_sarvam_api_key",
+            },
+        ],
+    },
 }
 
 CATEGORIES = ["oauth", "voice", "observability"]

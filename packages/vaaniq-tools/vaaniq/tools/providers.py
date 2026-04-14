@@ -63,15 +63,10 @@ PROVIDERS: dict[str, dict] = {
         "config_fields": [],
         "simple_key": True,
     },
-    "assemblyai": {
-        "category": "stt",
-        "display_name": "AssemblyAI",
-        "credential_fields": ["api_key"],
-        "config_fields": [],
-        "simple_key": True,
-    },
+    # ── STT + TTS ─────────────────────────────────────────────────────────────
+    # Sarvam covers both STT and TTS for Indian languages with a single API key.
     "sarvam": {
-        "category": "stt",
+        "category": "voice",
         "display_name": "Sarvam AI",
         "credential_fields": ["api_key"],
         "config_fields": [],
