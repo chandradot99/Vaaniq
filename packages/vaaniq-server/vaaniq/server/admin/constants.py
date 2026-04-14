@@ -14,10 +14,12 @@ Each entry defines:
 """
 
 PLATFORM_PROVIDER_SCHEMAS: dict[str, dict] = {
-    # ── OAuth providers ────────────────────────────────────────────────────────
+    # ── App setup ─────────────────────────────────────────────────────────────
+    # Full app registrations that require multiple credentials (Client ID,
+    # Account SID, etc.) — not just a single API key.
     "google": {
         "display_name": "Google",
-        "category": "oauth",
+        "category": "app",
         "description": "Required for Google Calendar, Gmail, and Drive integrations via OAuth.",
         "fields": [
             {
@@ -46,7 +48,7 @@ PLATFORM_PROVIDER_SCHEMAS: dict[str, dict] = {
     },
     "slack": {
         "display_name": "Slack",
-        "category": "oauth",
+        "category": "app",
         "description": "Required for Slack bot and messaging integrations.",
         "fields": [
             {
@@ -76,7 +78,7 @@ PLATFORM_PROVIDER_SCHEMAS: dict[str, dict] = {
     # ── Observability ──────────────────────────────────────────────────────────
     "langsmith": {
         "display_name": "LangSmith",
-        "category": "observability",
+        "category": "app",
         "description": "LangSmith tracing for debugging agent runs.",
         "fields": [
             {
@@ -106,7 +108,7 @@ PLATFORM_PROVIDER_SCHEMAS: dict[str, dict] = {
     },
     "sentry": {
         "display_name": "Sentry",
-        "category": "observability",
+        "category": "app",
         "description": "Error tracking and performance monitoring.",
         "fields": [
             {
@@ -123,7 +125,7 @@ PLATFORM_PROVIDER_SCHEMAS: dict[str, dict] = {
     # via Integrations; those take priority over these platform-level defaults.
     "twilio": {
         "display_name": "Twilio",
-        "category": "voice",
+        "category": "app",
         "description": "Default Twilio account for this deployment. Used for inbound/outbound calls unless an organisation has connected their own Twilio credentials.",
         "fields": [
             {
@@ -150,9 +152,81 @@ PLATFORM_PROVIDER_SCHEMAS: dict[str, dict] = {
             },
         ],
     },
+    # ── LLM providers ─────────────────────────────────────────────────────────
+    "openai": {
+        "display_name": "OpenAI",
+        "category": "provider",
+        "description": "Default OpenAI credentials for this deployment. Used for LLM nodes unless an organisation has connected their own OpenAI key.",
+        "fields": [
+            {
+                "key": "api_key",
+                "label": "API Key",
+                "secret": True,
+                "required": True,
+                "placeholder": "sk-proj-...",
+            },
+        ],
+    },
+    "anthropic": {
+        "display_name": "Anthropic",
+        "category": "provider",
+        "description": "Default Anthropic credentials for this deployment. Used for LLM nodes unless an organisation has connected their own Anthropic key.",
+        "fields": [
+            {
+                "key": "api_key",
+                "label": "API Key",
+                "secret": True,
+                "required": True,
+                "placeholder": "sk-ant-...",
+            },
+        ],
+    },
+    "groq": {
+        "display_name": "Groq",
+        "category": "provider",
+        "description": "Default Groq credentials for this deployment. Used for LLM nodes unless an organisation has connected their own Groq key.",
+        "fields": [
+            {
+                "key": "api_key",
+                "label": "API Key",
+                "secret": True,
+                "required": True,
+                "placeholder": "gsk_...",
+            },
+        ],
+    },
+    "gemini": {
+        "display_name": "Google Gemini",
+        "category": "provider",
+        "description": "Default Gemini credentials for this deployment. Used for LLM nodes unless an organisation has connected their own Gemini key.",
+        "fields": [
+            {
+                "key": "api_key",
+                "label": "API Key",
+                "secret": True,
+                "required": True,
+                "placeholder": "AIza...",
+            },
+        ],
+    },
+    "mistral": {
+        "display_name": "Mistral",
+        "category": "provider",
+        "description": "Default Mistral credentials for this deployment. Used for LLM nodes unless an organisation has connected their own Mistral key.",
+        "fields": [
+            {
+                "key": "api_key",
+                "label": "API Key",
+                "secret": True,
+                "required": True,
+                "placeholder": "...",
+            },
+        ],
+    },
+    # ── Voice providers ────────────────────────────────────────────────────────
     "deepgram": {
         "display_name": "Deepgram",
-        "category": "voice",
+        "category": "provider",
         "description": "Default STT provider for this deployment. Used for voice calls where an organisation has not connected their own Deepgram credentials.",
         "fields": [
             {
@@ -166,7 +240,7 @@ PLATFORM_PROVIDER_SCHEMAS: dict[str, dict] = {
     },
     "cartesia": {
         "display_name": "Cartesia",
-        "category": "voice",
+        "category": "provider",
         "description": "Default TTS provider for this deployment. Used for voice calls where an organisation has not connected their own Cartesia credentials.",
         "fields": [
             {
@@ -180,7 +254,7 @@ PLATFORM_PROVIDER_SCHEMAS: dict[str, dict] = {
     },
     "elevenlabs": {
         "display_name": "ElevenLabs",
-        "category": "voice",
+        "category": "provider",
         "description": "Default ElevenLabs TTS for this deployment. Used for voice calls where an organisation has not connected their own ElevenLabs credentials.",
         "fields": [
             {
@@ -194,7 +268,7 @@ PLATFORM_PROVIDER_SCHEMAS: dict[str, dict] = {
     },
     "sarvam": {
         "display_name": "Sarvam AI",
-        "category": "voice",
+        "category": "provider",
         "description": "Default STT and TTS for Indian languages (Hindi, Tamil, Telugu, Marathi, Bengali, Gujarati, Kannada, Malayalam). Used for voice calls where an organisation has not connected their own Sarvam credentials.",
         "fields": [
             {
@@ -206,6 +280,55 @@ PLATFORM_PROVIDER_SCHEMAS: dict[str, dict] = {
             },
         ],
     },
+    "telnyx": {
+        "display_name": "Telnyx",
+        "category": "app",
+        "description": "Default Telnyx account for this deployment. Used for inbound/outbound calls unless an organisation has connected their own Telnyx credentials.",
+        "fields": [
+            {
+                "key": "api_key",
+                "label": "API Key",
+                "secret": True,
+                "required": True,
+                "placeholder": "KEY...",
+            },
+        ],
+    },
+    "gupshup": {
+        "display_name": "Gupshup",
+        "category": "app",
+        "description": "Default Gupshup account for this deployment. Used for WhatsApp messaging unless an organisation has connected their own Gupshup credentials.",
+        "fields": [
+            {
+                "key": "api_key",
+                "label": "API Key",
+                "secret": True,
+                "required": True,
+                "placeholder": "your_gupshup_api_key",
+            },
+        ],
+    },
+    "vonage": {
+        "display_name": "Vonage",
+        "category": "app",
+        "description": "Default Vonage account for this deployment. Used for inbound/outbound calls unless an organisation has connected their own Vonage credentials.",
+        "fields": [
+            {
+                "key": "api_key",
+                "label": "API Key",
+                "secret": False,
+                "required": True,
+                "placeholder": "your_vonage_api_key",
+            },
+            {
+                "key": "api_secret",
+                "label": "API Secret",
+                "secret": True,
+                "required": True,
+                "placeholder": "your_vonage_api_secret",
+            },
+        ],
+    },
 }
 
-CATEGORIES = ["oauth", "voice", "observability"]
+CATEGORIES = ["provider", "app"]
