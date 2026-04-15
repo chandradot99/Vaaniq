@@ -83,6 +83,72 @@ def test_elevenlabs_missing_key_raises():
         create_tts_plugin(ctx)
 
 
+# ── OpenAI TTS ────────────────────────────────────────────────────────────────
+
+def test_openai_tts_created():
+    from livekit.plugins.openai import TTS
+
+    ctx = _ctx(tts_provider="openai", org_keys={"openai": "sk-test-key"})
+    plugin = create_tts_plugin(ctx)
+    assert isinstance(plugin, TTS)
+
+
+def test_openai_tts_custom_model():
+    from livekit.plugins.openai import TTS
+
+    ctx = _ctx(
+        tts_provider="openai",
+        tts_model="tts-1-hd",
+        org_keys={"openai": "sk-test-key"},
+    )
+    plugin = create_tts_plugin(ctx)
+    assert isinstance(plugin, TTS)
+
+
+def test_openai_tts_valid_voice():
+    from livekit.plugins.openai import TTS
+
+    ctx = _ctx(
+        tts_provider="openai",
+        agent_voice_id="nova",
+        org_keys={"openai": "sk-test-key"},
+    )
+    plugin = create_tts_plugin(ctx)
+    assert isinstance(plugin, TTS)
+
+
+def test_openai_tts_invalid_voice_falls_back():
+    """Unknown voice_id should fall back to 'alloy' without raising."""
+    from livekit.plugins.openai import TTS
+
+    ctx = _ctx(
+        tts_provider="openai",
+        agent_voice_id="nonexistent-voice",
+        org_keys={"openai": "sk-test-key"},
+    )
+    plugin = create_tts_plugin(ctx)
+    assert isinstance(plugin, TTS)
+
+
+def test_openai_tts_with_speed():
+    from livekit.plugins.openai import TTS
+
+    ctx = _ctx(
+        tts_provider="openai",
+        tts_speed=1.25,
+        org_keys={"openai": "sk-test-key"},
+    )
+    plugin = create_tts_plugin(ctx)
+    assert isinstance(plugin, TTS)
+
+
+def test_openai_tts_missing_key_raises():
+    ctx = _ctx(tts_provider="openai", org_keys={})
+    with pytest.raises(MissingAPIKeyError) as exc_info:
+        create_tts_plugin(ctx)
+    assert exc_info.value.provider == "openai"
+
+
 # ── Sarvam AI ─────────────────────────────────────────────────────────────────
 
 def test_sarvam_tts_created():
