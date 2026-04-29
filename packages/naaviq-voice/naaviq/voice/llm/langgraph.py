@@ -1,5 +1,5 @@
 """
-LangGraphLLM — LiveKit LLM adapter for VaaniQ's LangGraph engine.
+LangGraphLLM — LiveKit LLM adapter for Naaviq's LangGraph engine.
 
 Bridges LiveKit's Agent model (which expects an LLM that takes a chat context
 and returns a response stream) with LangGraph's stateful graph execution model.

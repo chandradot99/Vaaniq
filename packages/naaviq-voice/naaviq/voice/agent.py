@@ -1,5 +1,5 @@
 """
-NaaviqVoiceAgent — LiveKit Agent wrapper for VaaniQ's voice pipeline.
+NaaviqVoiceAgent — LiveKit Agent wrapper for Naaviq's voice pipeline.
 
 Wires together:
   VAD (Silero)  →  STT (Deepgram/Sarvam/AssemblyAI)

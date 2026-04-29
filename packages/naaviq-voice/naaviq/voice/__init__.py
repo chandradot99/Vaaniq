@@ -1,1 +1,1 @@
-"""naaviq-voice — Voice pipeline for VaaniQ (Pipecat PSTN + LiveKit WebRTC)."""
+"""naaviq-voice — Voice pipeline for Naaviq (Pipecat PSTN + LiveKit WebRTC)."""
