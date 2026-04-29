@@ -12,6 +12,7 @@ Signature verification:
 import structlog
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from naaviq.server.core.database import get_db
 
 log = structlog.get_logger()

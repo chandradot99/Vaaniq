@@ -1,4 +1,5 @@
 from fastapi import Depends
+
 from naaviq.server.admin.exceptions import AdminOnly
 from naaviq.server.auth.dependencies import CurrentUser, get_current_user
 

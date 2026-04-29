@@ -7,6 +7,7 @@ DB calls are mocked — no real PostgreSQL needed.
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from naaviq.server.voice.context_builder import (
     _resolve_provider,
     build_voice_context,

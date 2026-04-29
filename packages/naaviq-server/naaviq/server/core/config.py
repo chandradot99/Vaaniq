@@ -1,6 +1,7 @@
 from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from naaviq.server.core.env import ENV_FILE
 
 

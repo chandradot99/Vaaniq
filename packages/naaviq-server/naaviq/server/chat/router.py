@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from naaviq.server.agents.dependencies import valid_agent
 from naaviq.server.agents.models import Agent
 from naaviq.server.auth.dependencies import CurrentUser, get_current_user

@@ -1,6 +1,7 @@
 """Unit tests for auth schema validation — no DB required."""
 import pytest
 from pydantic import ValidationError
+
 from naaviq.server.auth.schemas import RegisterRequest
 
 

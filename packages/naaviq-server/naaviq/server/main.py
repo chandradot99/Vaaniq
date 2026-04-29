@@ -1,9 +1,10 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-import naaviq.server.voice.models  # noqa: F401 — registers PhoneNumber with Base.metadata
 from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
+
+import naaviq.server.voice.models  # noqa: F401 — registers PhoneNumber with Base.metadata
 from naaviq.server.admin.router import router as admin_router
 from naaviq.server.agents.router import router as agents_router
 from naaviq.server.auth.router import router as auth_router
@@ -60,6 +61,7 @@ async def health() -> dict:
 async def ready() -> dict:
     import redis.asyncio as aioredis
     from sqlalchemy import text
+
     from naaviq.server.core.database import async_session_factory
     errors: list[str] = []
     try:

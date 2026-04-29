@@ -1,5 +1,6 @@
 """Unit tests for TemplateResolver — no LLM, no DB required."""
 import pytest
+
 from naaviq.graph.resolver import TemplateResolver
 
 

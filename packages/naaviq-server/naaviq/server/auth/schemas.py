@@ -1,4 +1,5 @@
 from pydantic import EmailStr, field_validator
+
 from naaviq.server.core.schemas import CustomModel
 
 

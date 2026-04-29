@@ -4,6 +4,7 @@ from typing import Any
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from naaviq.server.models.integration import Integration
 
 

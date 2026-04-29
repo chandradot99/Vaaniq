@@ -23,6 +23,7 @@ Config:
                                approving the send)
 """
 from langgraph.types import interrupt
+
 from naaviq.graph.nodes.base import BaseNode
 from naaviq.graph.state import GraphSessionState
 

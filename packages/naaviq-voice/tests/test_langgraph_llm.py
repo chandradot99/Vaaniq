@@ -15,6 +15,7 @@ Key behaviors tested:
 from unittest.mock import AsyncMock, MagicMock
 
 from livekit.agents import llm
+
 from naaviq.voice.llm.langgraph import (
     LangGraphLLM,
     _extract_agent_text,

@@ -3,6 +3,7 @@ import enum
 
 from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB
+
 from naaviq.server.core.database import Base
 
 

@@ -5,6 +5,7 @@ No real API calls — plugins are instantiated but not connected.
 """
 
 import pytest
+
 from naaviq.voice.exceptions import MissingAPIKeyError, ProviderNotFoundError
 from naaviq.voice.pipeline.context import VoiceCallContext
 from naaviq.voice.tts import create_tts_plugin

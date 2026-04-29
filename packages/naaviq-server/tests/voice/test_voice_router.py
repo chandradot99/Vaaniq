@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+
 from naaviq.server.auth.dependencies import get_current_user
 from naaviq.server.core.database import get_db
 from naaviq.server.voice.router import router
@@ -63,6 +64,7 @@ async def client(app):
 
 def test_add_request_rejects_non_e164():
     from pydantic import ValidationError
+
     from naaviq.server.voice.schemas import AddPhoneNumberRequest
     with pytest.raises(ValidationError):
         AddPhoneNumberRequest(agent_id="a", number="0800-555-1234")
@@ -70,6 +72,7 @@ def test_add_request_rejects_non_e164():
 
 def test_add_request_rejects_invalid_provider():
     from pydantic import ValidationError
+
     from naaviq.server.voice.schemas import AddPhoneNumberRequest
     with pytest.raises(ValidationError):
         AddPhoneNumberRequest(agent_id="a", number="+14155551234", provider="bandwidth")
@@ -83,6 +86,7 @@ def test_add_request_accepts_valid_e164():
 
 def test_outbound_request_rejects_non_e164():
     from pydantic import ValidationError
+
     from naaviq.server.voice.schemas import OutboundCallRequest
     with pytest.raises(ValidationError):
         OutboundCallRequest(agent_id="a", from_number="bad", to_number="+19995551234")

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from naaviq.server.auth.dependencies import CurrentUser, get_current_user
 from naaviq.server.auth.exceptions import EmailAlreadyExists
 from naaviq.server.auth.repository import AuthRepository

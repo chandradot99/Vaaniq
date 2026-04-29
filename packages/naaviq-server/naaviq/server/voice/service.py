@@ -10,6 +10,7 @@ import uuid
 import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from naaviq.server.admin import platform_cache
 from naaviq.server.agents.exceptions import AgentNotFound
 from naaviq.server.agents.repository import AgentRepository
@@ -419,6 +420,7 @@ async def _create_livekit_room_with_dispatch(session_id: str) -> None:
         CreateRoomRequest,
         LiveKitAPI,
     )
+
     from naaviq.server.core.config import settings
 
     livekit_url = settings.livekit_url
@@ -467,6 +469,7 @@ async def _create_sip_participant(
     in the LiveKit Cloud dashboard).
     """
     from livekit.api import CreateSIPParticipantRequest, LiveKitAPI
+
     from naaviq.server.core.config import settings
 
     async with LiveKitAPI(

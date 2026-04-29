@@ -26,6 +26,7 @@ import operator
 from typing import Annotated, Any, Literal, Optional
 
 from typing_extensions import TypedDict
+
 from naaviq.core.state import Message, ToolCall
 
 

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+
 from naaviq.server.auth.dependencies import CurrentUser, get_current_user
 from naaviq.server.core.schemas import CustomModel
 

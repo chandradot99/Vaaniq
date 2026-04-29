@@ -32,6 +32,7 @@ from langchain_core.messages import (
 )
 from langchain_core.tools import StructuredTool
 from pydantic import Field, create_model
+
 from naaviq.core.state import Message, ToolCall
 from naaviq.graph.nodes.base import BaseNode
 from naaviq.graph.nodes.llm import get_llm

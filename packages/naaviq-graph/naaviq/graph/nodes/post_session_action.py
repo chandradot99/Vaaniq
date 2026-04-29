@@ -17,6 +17,7 @@ The task dispatcher is injected via org_keys["_task_dispatcher"] at
 build time by naaviq-server. If not present, actions are logged and skipped.
 """
 import structlog
+
 from naaviq.core.state import SessionState
 from naaviq.graph.nodes.base import BaseNode
 

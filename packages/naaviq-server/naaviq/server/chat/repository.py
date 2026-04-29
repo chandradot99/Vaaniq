@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from naaviq.server.models.session import Session
 
 

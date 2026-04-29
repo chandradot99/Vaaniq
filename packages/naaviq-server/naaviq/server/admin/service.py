@@ -2,6 +2,7 @@ import json
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from naaviq.server.admin.constants import PLATFORM_PROVIDER_SCHEMAS
 from naaviq.server.admin.exceptions import ProviderNotFound, UnknownProvider
 from naaviq.server.admin.repository import PlatformConfigRepository

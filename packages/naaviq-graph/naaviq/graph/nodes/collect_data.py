@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 import structlog
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.types import interrupt
+
 from naaviq.core.state import SessionState
 from naaviq.graph.nodes.base import BaseNode
 from naaviq.graph.nodes.llm import get_llm

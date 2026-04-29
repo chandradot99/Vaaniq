@@ -1,6 +1,7 @@
 """Unit tests for core/security.py — no DB required."""
 import pytest
 from jose import jwt
+
 from naaviq.server.auth.config import auth_settings
 from naaviq.server.core.security import (
     create_access_token,

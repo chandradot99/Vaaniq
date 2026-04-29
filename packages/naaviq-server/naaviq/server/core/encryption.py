@@ -1,4 +1,5 @@
 from cryptography.fernet import Fernet
+
 from naaviq.server.core.config import settings
 
 

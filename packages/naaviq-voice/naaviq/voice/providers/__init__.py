@@ -21,7 +21,6 @@ Usage:
 # Register all providers by importing them (class decorators do the registration)
 from naaviq.voice.providers import stt as _stt_providers  # noqa: F401
 from naaviq.voice.providers import tts as _tts_providers  # noqa: F401
-
 from naaviq.voice.providers.base import ModelInfo, STTProviderBase, TTSProviderBase, VoiceInfo
 from naaviq.voice.providers.registry import ProviderRegistry
 

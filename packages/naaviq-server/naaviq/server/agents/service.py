@@ -4,6 +4,7 @@ from typing import Any
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from naaviq.server.agents.exceptions import AgentAccessDenied, AgentNotFound
 from naaviq.server.agents.models import Agent
 from naaviq.server.agents.repository import AgentRepository

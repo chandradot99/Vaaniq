@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from naaviq.server.auth.constants import (
     DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES,
     DEFAULT_JWT_ALGORITHM,

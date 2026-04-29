@@ -76,6 +76,7 @@ def _verify_livekit_signature(body: bytes, auth_header: str) -> bool:
     """
     try:
         from livekit.api import WebhookReceiver
+
         from naaviq.server.core.config import settings
 
         api_key = getattr(settings, "livekit_api_key", "")

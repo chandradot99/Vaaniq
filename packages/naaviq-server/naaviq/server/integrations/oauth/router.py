@@ -19,6 +19,7 @@ import traceback
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from naaviq.server.auth.dependencies import CurrentUser, get_current_user
 from naaviq.server.core.config import settings
 from naaviq.server.core.database import get_db

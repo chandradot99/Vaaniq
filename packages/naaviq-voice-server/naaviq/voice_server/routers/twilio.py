@@ -20,6 +20,7 @@ No /v1/ prefix — Twilio controls these URLs.
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from naaviq.server.core.database import get_db
 from naaviq.server.webhooks.dependencies import verify_twilio_signature
 from naaviq.server.webhooks.service import VoiceWebhookService

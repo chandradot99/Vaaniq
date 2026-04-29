@@ -3,6 +3,7 @@ import os
 import sentry_sdk
 import structlog
 from sentry_sdk.integrations.fastapi import FastApiIntegration
+
 from naaviq.server.core.config import settings
 
 

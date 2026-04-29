@@ -161,6 +161,7 @@ async def test_http_request_success():
 
 async def test_http_request_http_error_sets_error_state():
     import httpx
+
     from naaviq.graph.nodes.http_request import HttpRequestNode
 
     node = HttpRequestNode(

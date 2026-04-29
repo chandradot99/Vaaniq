@@ -3,6 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
+
 from naaviq.server.auth.constants import OrgRole
 from naaviq.server.core.database import Base
 

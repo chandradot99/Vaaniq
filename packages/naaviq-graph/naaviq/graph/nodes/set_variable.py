@@ -6,6 +6,7 @@ Config:
     value (any)  literal value or {{template}} expression
 """
 import structlog
+
 from naaviq.core.state import SessionState
 from naaviq.graph.nodes.base import PROTECTED_STATE_KEYS, BaseNode
 from naaviq.graph.resolver import TemplateResolver

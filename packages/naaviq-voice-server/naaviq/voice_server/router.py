@@ -10,6 +10,7 @@ Adding a new telephony provider:
 """
 
 from fastapi import APIRouter
+
 from naaviq.voice_server.routers.livekit import router as livekit_router
 from naaviq.voice_server.routers.telnyx import router as telnyx_router
 from naaviq.voice_server.routers.twilio import router as twilio_router

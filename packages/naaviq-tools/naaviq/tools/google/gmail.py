@@ -9,6 +9,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from googleapiclient.discovery import build
+
 from naaviq.tools.base import BaseTool
 from naaviq.tools.google.auth import build_google_credentials
 

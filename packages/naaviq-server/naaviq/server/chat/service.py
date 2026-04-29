@@ -24,6 +24,7 @@ import structlog
 from langchain_core.callbacks.base import BaseCallbackHandler
 from langgraph.types import Command
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from naaviq.graph.builder import GraphBuilder
 from naaviq.server.agents.repository import AgentRepository
 from naaviq.server.chat.checkpointer import get_checkpointer, make_thread_id

@@ -5,8 +5,8 @@ Stores agent-level STT/TTS defaults (provider, model, voice, language, speed).
 These are overridden per-phone-number by the existing phone_numbers.voice_config.
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
 
 revision = "0011"

@@ -15,6 +15,7 @@ from typing import TypedDict
 
 import structlog
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+
 from naaviq.graph.nodes.base import BaseNode
 from naaviq.graph.nodes.llm import get_llm
 from naaviq.graph.state import GraphSessionState

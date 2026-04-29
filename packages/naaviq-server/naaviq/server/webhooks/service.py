@@ -2,6 +2,7 @@ import uuid
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from naaviq.server.agents.repository import AgentRepository
 from naaviq.server.models.session import Session, SessionStatus
 from naaviq.server.webhooks.repository import SessionRepository

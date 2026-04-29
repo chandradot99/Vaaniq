@@ -9,6 +9,7 @@ event_type values:
 """
 from sqlalchemy import Column, DateTime, Integer, SmallInteger, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
+
 from naaviq.server.core.database import Base
 
 

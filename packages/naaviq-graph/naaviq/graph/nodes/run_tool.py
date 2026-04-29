@@ -9,6 +9,7 @@ Config:
 from datetime import datetime, timezone
 
 import structlog
+
 from naaviq.core.state import SessionState
 from naaviq.graph.nodes.base import PROTECTED_STATE_KEYS, BaseNode
 from naaviq.graph.resolver import TemplateResolver

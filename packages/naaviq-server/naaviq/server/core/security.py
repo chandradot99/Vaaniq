@@ -6,6 +6,7 @@ from typing import Any, Optional
 from jose import JWTError, jwt
 from pwdlib import PasswordHash
 from pwdlib.hashers.argon2 import Argon2Hasher
+
 from naaviq.server.auth.config import auth_settings
 
 password_hash = PasswordHash([Argon2Hasher()])

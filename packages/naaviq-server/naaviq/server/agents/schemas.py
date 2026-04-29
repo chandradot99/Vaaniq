@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import field_validator
+
 from naaviq.server.agents.constants import SUPPORTED_LANGUAGES
 from naaviq.server.core.schemas import CustomModel
 from naaviq.server.voice.schemas import VoiceConfig

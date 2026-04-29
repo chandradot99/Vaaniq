@@ -287,6 +287,7 @@ async def _find_session_by_phone(phone: str) -> str | None:
     from datetime import datetime, timedelta, timezone
 
     from sqlalchemy import or_, select
+
     from naaviq.server.core.database import async_session_factory
     from naaviq.server.models.session import Session, SessionStatus
 
@@ -317,6 +318,7 @@ if __name__ == "__main__":
     # Uses find_workspace_root() — walks up to the directory that has
     # pyproject.toml + packages/, so no fragile parent-index counting.
     from dotenv import load_dotenv
+
     from naaviq.server.core.env import ENV_FILE
     load_dotenv(ENV_FILE)
 

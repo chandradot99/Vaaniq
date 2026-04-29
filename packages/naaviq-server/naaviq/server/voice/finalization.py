@@ -23,6 +23,8 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
+
 import naaviq.server.agents.models  # noqa: F401 — registers Agent
 
 # Import all models so SQLAlchemy's Base.metadata knows every table before any
@@ -30,7 +32,6 @@ import naaviq.server.agents.models  # noqa: F401 — registers Agent
 # organizations.id fail with NoReferencedTableError during flush/commit because
 # the 'organizations' and 'agents' tables aren't registered in the metadata.
 import naaviq.server.auth.models  # noqa: F401 — registers User, Organization, OrgMember
-from sqlalchemy.ext.asyncio import AsyncSession
 from naaviq.server.chat.checkpointer import get_checkpointer, make_thread_id
 from naaviq.server.core.database import async_session_factory
 from naaviq.server.webhooks.repository import SessionRepository

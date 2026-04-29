@@ -6,10 +6,10 @@ Calls: list call history, initiate outbound calls.
 Providers: list registered STT/TTS providers, models, and voices.
 """
 
-import naaviq.voice.providers  # noqa: F401 — ensures all providers are registered
-
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
+import naaviq.voice.providers  # noqa: F401 — ensures all providers are registered
 from naaviq.server.agents.exceptions import AgentNotFound
 from naaviq.server.auth.dependencies import CurrentUser, get_current_user
 from naaviq.server.core.database import get_db

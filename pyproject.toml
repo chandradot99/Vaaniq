@@ -33,6 +33,9 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["naaviq"]
+
 [tool.ruff.lint.per-file-ignores]
 # LLM prompt strings contain intentionally long lines
 "packages/naaviq-graph/naaviq/graph/nodes/collect_data.py" = ["E501"]
@@ -44,6 +47,10 @@ select = ["E", "F", "I"]
 "packages/naaviq-server/naaviq/server/chat/service.py" = ["E501"]
 # Tool implementations: long URLs and API strings
 "packages/naaviq-tools/naaviq/tools/google/calendar.py" = ["E501"]
+# Voice provider static model lists: long description strings
+"packages/naaviq-voice/naaviq/voice/providers/tts/cartesia.py" = ["E501"]
+"packages/naaviq-voice/naaviq/voice/providers/tts/elevenlabs.py" = ["E501"]
+"packages/naaviq-voice/naaviq/voice/providers/tts/openai.py" = ["E501"]
 # Test files: long assertion messages and test data are acceptable
 "packages/*/tests/**/*.py" = ["E501"]
 "packages/*/tests/*.py" = ["E501"]

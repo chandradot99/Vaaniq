@@ -6,8 +6,8 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import field_validator
-from naaviq.server.core.schemas import CustomModel
 
+from naaviq.server.core.schemas import CustomModel
 
 # ── Voice provider schemas ────────────────────────────────────────────────────
 

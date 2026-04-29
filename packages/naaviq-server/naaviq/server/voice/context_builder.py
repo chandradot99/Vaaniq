@@ -13,6 +13,7 @@ Resolution order for STT/TTS:
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from naaviq.server.admin import platform_cache
 from naaviq.server.agents.repository import AgentRepository
 from naaviq.server.integrations.repository import IntegrationRepository

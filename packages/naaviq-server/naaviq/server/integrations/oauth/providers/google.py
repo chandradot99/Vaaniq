@@ -23,6 +23,7 @@ import asyncio
 
 import httpx
 from google_auth_oauthlib.flow import Flow
+
 from naaviq.server.admin.platform_cache import get_provider_config
 from naaviq.server.core.config import settings
 from naaviq.server.integrations.oauth.base import OAuthProvider

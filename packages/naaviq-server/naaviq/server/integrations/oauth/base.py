@@ -24,6 +24,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
+
 from naaviq.server.core.config import settings
 
 _STATE_ALGORITHM = "HS256"

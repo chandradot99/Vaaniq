@@ -21,6 +21,7 @@ import asyncio
 import structlog
 from livekit.agents import Agent, AgentSession, JobContext
 from livekit.plugins import silero
+
 from naaviq.voice.llm import LangGraphLLM
 from naaviq.voice.pipeline.context import VoiceCallContext
 from naaviq.voice.stt import create_stt_plugin

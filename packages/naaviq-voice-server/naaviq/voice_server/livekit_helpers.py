@@ -55,6 +55,7 @@ async def create_livekit_room(session_id: str) -> None:
     """
     try:
         from livekit.api import CreateRoomRequest, LiveKitAPI
+
         from naaviq.server.core.config import settings
 
         livekit_url = getattr(settings, "livekit_url", "")

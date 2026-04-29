@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import httpx
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from naaviq.core.credentials import CredentialStore
 from naaviq.server.core.encryption import decrypt_key, encrypt_key
 from naaviq.server.integrations.constants import _TESTABLE_PROVIDERS, PROVIDERS

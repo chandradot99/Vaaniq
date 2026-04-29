@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from naaviq.server.auth.config import auth_settings
 from naaviq.server.auth.constants import OrgRole
 from naaviq.server.auth.exceptions import InvalidCredentials, InvalidToken

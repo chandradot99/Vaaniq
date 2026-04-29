@@ -19,6 +19,7 @@ from collections import defaultdict
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
+
 from naaviq.graph.nodes import NODE_REGISTRY
 from naaviq.graph.state import GraphSessionState
 

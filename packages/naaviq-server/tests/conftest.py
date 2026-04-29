@@ -27,6 +27,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
 from naaviq.server.core.database import Base, get_db
 from naaviq.server.main import app
 

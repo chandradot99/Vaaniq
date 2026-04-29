@@ -8,6 +8,7 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 
 from googleapiclient.discovery import build
+
 from naaviq.tools.base import BaseTool
 from naaviq.tools.google.auth import build_google_credentials
 

@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from pydantic import field_validator
+
 from naaviq.server.core.schemas import CustomModel
 from naaviq.server.integrations.constants import PROVIDERS, SUPPORTED_PROVIDERS
 

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
 from naaviq.server.auth.exceptions import InvalidToken
 from naaviq.server.auth.models import User
 from naaviq.server.core.security import decode_token

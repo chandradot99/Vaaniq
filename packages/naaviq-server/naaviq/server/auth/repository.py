@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from naaviq.server.auth.models import Organization, OrgMember, RefreshToken, User, UserIdentity
 
 

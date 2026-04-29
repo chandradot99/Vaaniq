@@ -29,6 +29,7 @@ import hmac
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from naaviq.server.core.config import settings
 from naaviq.server.core.database import get_db
 from naaviq.server.webhooks.service import VoiceWebhookService

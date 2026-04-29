@@ -24,6 +24,8 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import structlog
+from fastapi import FastAPI
+
 import naaviq.server.agents.models  # noqa: F401
 
 # Register all SQLAlchemy models so Base.metadata has the full table graph.
@@ -31,7 +33,6 @@ import naaviq.server.auth.models  # noqa: F401
 import naaviq.server.models.integration  # noqa: F401
 import naaviq.server.models.session  # noqa: F401
 import naaviq.server.voice.models  # noqa: F401
-from fastapi import FastAPI
 from naaviq.server.core.config import settings
 from naaviq.server.core.observability import setup_observability
 from naaviq.voice_server.router import router as voice_router
@@ -86,6 +87,7 @@ async def _run_livekit_worker() -> None:
     try:
         from livekit.agents import WorkerOptions
         from livekit.agents.worker import AgentServer
+
         from naaviq.voice.worker import entrypoint
 
         livekit_url = getattr(settings, "livekit_url", "")

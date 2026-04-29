@@ -7,7 +7,6 @@ naaviq.voice.providers.tts.*  — add new providers there.
 
 # Ensure all providers are registered before any lookup
 import naaviq.voice.providers  # noqa: F401
-
 from naaviq.voice.pipeline.context import VoiceCallContext
 from naaviq.voice.providers.registry import ProviderRegistry
 

@@ -11,6 +11,7 @@ Docs: https://www.twilio.com/docs/usage/webhooks/webhooks-security
 import structlog
 from fastapi import HTTPException, Request
 from twilio.request_validator import RequestValidator
+
 from naaviq.server.core.config import settings
 
 log = structlog.get_logger()
