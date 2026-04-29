@@ -1,4 +1,4 @@
-# Vaaniq
+# Naaviq
 
 Open source AI agent platform. Build and deploy agents that handle phone calls, web chat, and WhatsApp — powered by your own data and API keys.
 
@@ -20,25 +20,25 @@ Open source AI agent platform. Build and deploy agents that handle phone calls, 
 
 ## Package Architecture
 
-Vaaniq is built as multiple composable Python packages under a shared `vaaniq` namespace:
+Naaviq is built as multiple composable Python packages under a shared `naaviq` namespace:
 
 | Package | Purpose | PyPI |
 |---|---|---|
-| `vaaniq-core` | Base classes + `SessionState` — no external deps | `pip install vaaniq-core` |
-| `vaaniq-graph` | Visual LangGraph execution engine | `pip install vaaniq-graph` |
-| `vaaniq-voice` | Voice pipeline — LiveKit Agents (STT → LangGraph → TTS) | `pip install vaaniq-voice` |
-| `vaaniq-rag` | RAG pipeline + vector DB connectors | `pip install vaaniq-rag` |
-| `vaaniq-tools` | Pre-built tool library (Calendar, CRM, Payments, …) | `pip install vaaniq-tools` |
-| `vaaniq-channels` | Chat (SSE) + WhatsApp channel handlers | `pip install vaaniq-channels` |
-| `vaaniq-server` | FastAPI server — REST APIs, DB, auth | self-hosted only |
-| `vaaniq-voice-server` | Standalone voice server — Twilio webhooks + LiveKit worker ([setup guide](packages/vaaniq-voice-server/README.md)) | self-hosted only |
+| `naaviq-core` | Base classes + `SessionState` — no external deps | `pip install naaviq-core` |
+| `naaviq-graph` | Visual LangGraph execution engine | `pip install naaviq-graph` |
+| `naaviq-voice` | Voice pipeline — LiveKit Agents (STT → LangGraph → TTS) | `pip install naaviq-voice` |
+| `naaviq-rag` | RAG pipeline + vector DB connectors | `pip install naaviq-rag` |
+| `naaviq-tools` | Pre-built tool library (Calendar, CRM, Payments, …) | `pip install naaviq-tools` |
+| `naaviq-channels` | Chat (SSE) + WhatsApp channel handlers | `pip install naaviq-channels` |
+| `naaviq-server` | FastAPI server — REST APIs, DB, auth | self-hosted only |
+| `naaviq-voice-server` | Standalone voice server — Twilio webhooks + LiveKit worker ([setup guide](packages/naaviq-voice-server/README.md)) | self-hosted only |
 
 Install only what you need:
 
 ```bash
-pip install vaaniq-graph vaaniq-voice          # just the graph + voice pipeline
-pip install vaaniq-tools[crm,payments]         # CRM + payments tools only
-pip install vaaniq-tools[all]                  # all tools
+pip install naaviq-graph naaviq-voice          # just the graph + voice pipeline
+pip install naaviq-tools[crm,payments]         # CRM + payments tools only
+pip install naaviq-tools[all]                  # all tools
 ```
 
 ---
@@ -55,8 +55,8 @@ pip install vaaniq-tools[all]                  # all tools
 ### 1. Clone
 
 ```bash
-git clone https://github.com/chandradot99/vaaniq
-cd vaaniq
+git clone https://github.com/chandradot99/naaviq
+cd naaviq
 ```
 
 ### 2. Install dependencies
@@ -69,10 +69,10 @@ uv sync
 ### 3. Configure environment
 
 ```bash
-cp .env.example packages/vaaniq-server/.env
+cp .env.example packages/naaviq-server/.env
 ```
 
-Edit `packages/vaaniq-server/.env` and set at minimum:
+Edit `packages/naaviq-server/.env` and set at minimum:
 
 ```bash
 # Generate a Fernet key
@@ -101,19 +101,19 @@ docker compose up postgres redis -d
 ### 5. Run migrations
 
 ```bash
-uv run alembic -c packages/vaaniq-server/alembic.ini upgrade head
+uv run alembic -c packages/naaviq-server/alembic.ini upgrade head
 ```
 
 ### 6. Start the servers
 
-Vaaniq runs as two separate processes. Open two terminals:
+Naaviq runs as two separate processes. Open two terminals:
 
 ```bash
 # Terminal 1 — main API server (REST, DB, auth, chat)
-uv run uvicorn vaaniq.server.main:app --port 8000 --reload
+uv run uvicorn naaviq.server.main:app --port 8000 --reload
 
 # Terminal 2 — voice server (Twilio webhooks + LiveKit worker)
-uv run uvicorn vaaniq.voice_server.main:app --port 8001 --reload
+uv run uvicorn naaviq.voice_server.main:app --port 8001 --reload
 ```
 
 Point Twilio's webhook URLs at the voice server (`http://your-domain:8001/...`).  
@@ -140,11 +140,11 @@ docker compose up
 uv run pytest
 
 # Single package in isolation
-uv run pytest packages/vaaniq-core/tests/ -v
-uv run pytest packages/vaaniq-graph/tests/ -v
+uv run pytest packages/naaviq-core/tests/ -v
+uv run pytest packages/naaviq-graph/tests/ -v
 
 # Server tests
-uv run pytest packages/vaaniq-server/tests/ -v
+uv run pytest packages/naaviq-server/tests/ -v
 ```
 
 ### Lint
@@ -163,8 +163,8 @@ uv sync
 ### Create a new migration
 
 ```bash
-uv run alembic -c packages/vaaniq-server/alembic.ini revision --autogenerate -m "your message"
-uv run alembic -c packages/vaaniq-server/alembic.ini upgrade head
+uv run alembic -c packages/naaviq-server/alembic.ini revision --autogenerate -m "your message"
+uv run alembic -c packages/naaviq-server/alembic.ini upgrade head
 ```
 
 ---
@@ -203,6 +203,6 @@ Apache 2.0 — see [LICENSE](LICENSE).
 
 ## Links
 
-- **GitHub:** [github.com/chandradot99/vaaniq](https://github.com/chandradot99/vaaniq)
-- **Issues:** [github.com/chandradot99/vaaniq/issues](https://github.com/chandradot99/vaaniq/issues)
-- **Linear:** [linear.app/chandradot99/project/vaaniq](https://linear.app/chandradot99/project/vaaniq-43b1169cf4e7)
+- **GitHub:** [github.com/chandradot99/naaviq](https://github.com/chandradot99/naaviq)
+- **Issues:** [github.com/chandradot99/naaviq/issues](https://github.com/chandradot99/naaviq/issues)
+- **Linear:** [linear.app/chandradot99/project/naaviq](https://linear.app/chandradot99/project/naaviq-43b1169cf4e7)

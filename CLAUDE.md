@@ -1,17 +1,17 @@
-# Vaaniq — CLAUDE.md
+# Naaviq — CLAUDE.md
 
 > Read this file at the start of every session. It has everything needed to understand the project, make good decisions, and write consistent code.
 
-**GitHub:** `github.com/chandradot99/vaaniq`
-**Linear:** `linear.app/chandradot99/project/vaaniq-43b1169cf4e7`
-**PyPI namespace:** `vaaniq-*`
+**GitHub:** `github.com/chandradot99/naaviq-api`
+**Linear:** `linear.app/chandradot99/project/naaviq-43b1169cf4e7`
+**PyPI namespace:** `naaviq-*`
 **FastAPI best practices:** `github.com/zhanymkanov/fastapi-best-practices`
 
 ---
 
 ## What We Are Building
 
-**Vaaniq** — an open source AI agent platform. Businesses build and deploy agents that handle phone calls, web chat, and WhatsApp — powered by their own data and API keys. Voice is one channel among many, not the whole product.
+**Naaviq** — an open source AI agent platform. Businesses build and deploy agents that handle phone calls, web chat, and WhatsApp — powered by their own data and API keys. Voice is one channel among many, not the whole product.
 
 **Positioning:** Open source alternative to Vapi / ElevenLabs Agent / Retell AI.
 
@@ -30,33 +30,33 @@
 
 ## Package Architecture
 
-Vaaniq is built as **multiple composable Python packages** under a shared namespace. This is the most critical architectural decision — it enables independent versioning, isolated testing, and community contributions per package.
+Naaviq is built as **multiple composable Python packages** under a shared namespace. This is the most critical architectural decision — it enables independent versioning, isolated testing, and community contributions per package.
 
 ```
-pip install vaaniq-core      # SessionState + AgentConfig — no external deps
-pip install vaaniq-graph     # visual LangGraph execution engine
-pip install vaaniq-voice     # voice pipeline (STT → graph → TTS) — Pipecat for PSTN, LiveKit for WebRTC
-pip install vaaniq-rag       # RAG pipeline + vector DB connectors
-pip install vaaniq-tools     # pre-built tool library (Calendar, CRM, Payments)
-pip install vaaniq-channels  # chat (SSE) + WhatsApp channel handlers
-pip install vaaniq-server    # FastAPI server — ties all packages together
+pip install naaviq-core      # SessionState + AgentConfig — no external deps
+pip install naaviq-graph     # visual LangGraph execution engine
+pip install naaviq-voice     # voice pipeline (STT → graph → TTS) — Pipecat for PSTN, LiveKit for WebRTC
+pip install naaviq-rag       # RAG pipeline + vector DB connectors
+pip install naaviq-tools     # pre-built tool library (Calendar, CRM, Payments)
+pip install naaviq-channels  # chat (SSE) + WhatsApp channel handlers
+pip install naaviq-server    # FastAPI server — ties all packages together
 # Reserved namespace (cloud version only):
-pip install vaaniq-billing   # subscription plans, usage metering, Stripe
-pip install vaaniq-admin     # admin APIs, org management, impersonation
+pip install naaviq-billing   # subscription plans, usage metering, Stripe
+pip install naaviq-admin     # admin APIs, org management, impersonation
 ```
 
 ### Package Dependency Tree
 
 ```
-vaaniq-core                   ← no vaaniq dependencies (foundation)
+naaviq-core                   ← no naaviq dependencies (foundation)
       ↑
-      ├── vaaniq-graph         depends on: core
-      ├── vaaniq-rag           depends on: core
-      ├── vaaniq-tools         depends on: core
-      ├── vaaniq-voice         depends on: core, graph
-      └── vaaniq-channels      depends on: core, graph
+      ├── naaviq-graph         depends on: core
+      ├── naaviq-rag           depends on: core
+      ├── naaviq-tools         depends on: core
+      ├── naaviq-voice         depends on: core, graph
+      └── naaviq-channels      depends on: core, graph
               ↑
-        vaaniq-server          depends on: all packages above
+        naaviq-server          depends on: all packages above
 ```
 
 ### Who Uses What
@@ -64,37 +64,37 @@ vaaniq-core                   ← no vaaniq dependencies (foundation)
 ```
 User                    Installs                       Gets
 ──────────────────────────────────────────────────────────────────
-Indie developer         vaaniq-graph                Just the graph engine
-                        vaaniq-voice                + voice pipeline
+Indie developer         naaviq-graph                Just the graph engine
+                        naaviq-voice                + voice pipeline
                         (brings their own server)      in their own app
 
-Agency / startup        vaaniq-server               Full self-hosted
+Agency / startup        naaviq-server               Full self-hosted
                         + docker compose up             platform + dashboard
 
-End business client     vaaniq.ai (your SaaS)       Hosted cloud version
+End business client     naaviq.ai (your SaaS)       Hosted cloud version
 ```
 
 ### Why Multiple Packages (Not One Monolith)
 
-1. **Independent versioning** — release `vaaniq-rag` v1.2.0 without touching voice
-2. **Isolated testing** — test `vaaniq-graph` with no server, no DB, no voice pipeline
+1. **Independent versioning** — release `naaviq-rag` v1.2.0 without touching voice
+2. **Isolated testing** — test `naaviq-graph` with no server, no DB, no voice pipeline
 3. **Selective adoption** — developer uses just the graph engine in their own FastAPI app
-4. **Community contributions** — add a Qdrant connector to `vaaniq-rag` without touching anything else
-5. **Forces good architecture** — `vaaniq-graph` literally cannot import from `vaaniq-server`
-6. **Open core business model** — `vaaniq-billing` / `vaaniq-admin` can have stricter licensing later
+4. **Community contributions** — add a Qdrant connector to `naaviq-rag` without touching anything else
+5. **Forces good architecture** — `naaviq-graph` literally cannot import from `naaviq-server`
+6. **Open core business model** — `naaviq-billing` / `naaviq-admin` can have stricter licensing later
 
-### vaaniq-tools Optional Dependencies
+### naaviq-tools Optional Dependencies
 
-`vaaniq-tools` covers Calendar, CRM, Payments, Ecommerce, Helpdesk — each group pulls in heavy SDKs. Use optional dependency groups so users only install what they need:
+`naaviq-tools` covers Calendar, CRM, Payments, Ecommerce, Helpdesk — each group pulls in heavy SDKs. Use optional dependency groups so users only install what they need:
 
 ```toml
-# packages/vaaniq-tools/pyproject.toml
+# packages/naaviq-tools/pyproject.toml
 [project]
-name = "vaaniq-tools"
+name = "naaviq-tools"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-    "vaaniq-core>=0.1.0",
+    "naaviq-core>=0.1.0",
     "httpx>=0.27",          # base — used by webhook.py and all tool HTTP calls
 ]
 
@@ -106,21 +106,21 @@ helpdesk  = ["freshdesk-python>=1.0"]
 ecommerce = ["shopifyapi>=12.0", "woocommerce>=3.0"]
 messaging = ["twilio>=9.0", "slack-sdk>=3.0"]
 dev       = ["pytest>=8.0", "pytest-asyncio>=0.24"]
-all       = ["vaaniq-tools[crm,payments,calendar,helpdesk,ecommerce,messaging]"]
+all       = ["naaviq-tools[crm,payments,calendar,helpdesk,ecommerce,messaging]"]
 ```
 
 Install only what you need:
 ```bash
-pip install vaaniq-tools[crm,payments]   # CRM + payments only
-pip install vaaniq-tools[all]            # everything
+pip install naaviq-tools[crm,payments]   # CRM + payments only
+pip install naaviq-tools[all]            # everything
 ```
 
 ---
 
-## Monorepo Structure (`vaaniq` repo — Python only)
+## Monorepo Structure (`naaviq` repo — Python only)
 
 ```
-vaaniq/                              ← GitHub repo root
+naaviq/                              ← GitHub repo root
 ├── CLAUDE.md                           ← you are here
 ├── pyproject.toml                      ← uv workspace root
 ├── docker-compose.yml                  ← full local stack
@@ -138,18 +138,18 @@ vaaniq/                              ← GitHub repo root
 │
 ├── packages/                           ← Python packages (published to PyPI)
 │   │
-│   ├── vaaniq-core/
+│   ├── naaviq-core/
 │   │   ├── pyproject.toml
 │   │   ├── tests/
-│   │   └── vaaniq/core/
+│   │   └── naaviq/core/
 │   │       ├── __init__.py
 │   │       ├── state.py            ← SessionState, Message, ToolCall TypedDicts
 │   │       └── config.py           ← AgentConfig schema (Pydantic)
 │   │
-│   ├── vaaniq-graph/
+│   ├── naaviq-graph/
 │   │   ├── pyproject.toml
 │   │   ├── tests/
-│   │   └── vaaniq/graph/
+│   │   └── naaviq/graph/
 │   │       ├── __init__.py
 │   │       ├── builder.py          ← GraphBuilder: JSON → LangGraph
 │   │       ├── state.py            ← GraphSessionState with LangGraph reducers
@@ -161,18 +161,18 @@ vaaniq/                              ← GitHub repo root
 │   │           ├── llm_response.py
 │   │           ├── condition.py
 │   │           ├── collect_data.py
-│   │           ├── run_tool.py     ← stub until vaaniq-tools implemented
-│   │           ├── rag_search.py   ← stub until vaaniq-rag implemented
+│   │           ├── run_tool.py     ← stub until naaviq-tools implemented
+│   │           ├── rag_search.py   ← stub until naaviq-rag implemented
 │   │           ├── http_request.py
 │   │           ├── set_variable.py
 │   │           ├── transfer_human.py
 │   │           ├── end_session.py
 │   │           └── post_session_action.py
 │   │
-│   ├── vaaniq-voice/
+│   ├── naaviq-voice/
 │   │   ├── pyproject.toml
 │   │   ├── tests/
-│   │   └── vaaniq/voice/
+│   │   └── naaviq/voice/
 │   │       ├── __init__.py
 │   │       ├── pipeline.py         ← VoicePipeline abstraction — routes to correct backend
 │   │       ├── pipecat.py          ← Pipecat pipeline (PSTN phone calls via Twilio)
@@ -182,10 +182,10 @@ vaaniq/                              ← GitHub repo root
 │   │           ├── stt/            ← Deepgram, Whisper, Azure, Sarvam AI
 │   │           └── tts/            ← ElevenLabs, Azure, OpenAI TTS, Cartesia
 │   │
-│   ├── vaaniq-rag/
+│   ├── naaviq-rag/
 │   │   ├── pyproject.toml
 │   │   ├── tests/
-│   │   └── vaaniq/rag/
+│   │   └── naaviq/rag/
 │   │       ├── __init__.py
 │   │       ├── pipeline.py         ← chunk → embed → store / retrieve
 │   │       ├── embedder.py         ← text chunking + embedding
@@ -207,10 +207,10 @@ vaaniq/                              ← GitHub repo root
 │   │           ├── weaviate.py
 │   │           └── chroma.py
 │   │
-│   ├── vaaniq-tools/
+│   ├── naaviq-tools/
 │   │   ├── pyproject.toml          ← optional dep groups: crm, payments, calendar, helpdesk
 │   │   ├── tests/
-│   │   └── vaaniq/tools/
+│   │   └── naaviq/tools/
 │   │       ├── __init__.py
 │   │       ├── registry.py         ← TOOL_REGISTRY + dynamic loader
 │   │       ├── base.py             ← BaseTool class
@@ -222,10 +222,10 @@ vaaniq/                              ← GitHub repo root
 │   │       ├── messaging.py        ← WhatsApp, Slack, SMTP email
 │   │       └── webhook.py          ← Generic POST webhook (Zapier/n8n/Make)
 │   │
-│   ├── vaaniq-channels/
+│   ├── naaviq-channels/
 │   │   ├── pyproject.toml
 │   │   ├── tests/
-│   │   └── vaaniq/channels/
+│   │   └── naaviq/channels/
 │   │       ├── __init__.py
 │   │       ├── base.py             ← BaseChannel abstract
 │   │       ├── chat.py             ← SSE streaming chat
@@ -234,14 +234,14 @@ vaaniq/                              ← GitHub repo root
 │   │           ├── gupshup.py      ← India priority (cheaper)
 │   │           └── twilio.py
 │   │
-│   └── vaaniq-server/
+│   └── naaviq-server/
 │       ├── pyproject.toml          ← depends on all other packages
 │       ├── alembic.ini
 │       ├── tests/
-│       └── vaaniq/server/
+│       └── naaviq/server/
 │           ├── __init__.py
 │           ├── main.py             ← FastAPI app init + router registration
-│           ├── exceptions.py       ← global base exceptions (VaaniqException, NotFound, Unauthorized)
+│           ├── exceptions.py       ← global base exceptions (NaaviqException, NotFound, Unauthorized)
 │           │
 │           ├── auth/               ← auth domain
 │           │   ├── config.py       ← AuthConfig — JWT settings decoupled from global settings
@@ -304,27 +304,27 @@ We use **`uv`** (not pip/poetry) for the Python monorepo. It handles workspaces 
 # pyproject.toml (repo root — workspace definition)
 [tool.uv.workspace]
 members = [
-    "packages/vaaniq-core",
-    "packages/vaaniq-graph",
-    "packages/vaaniq-voice",
-    "packages/vaaniq-rag",
-    "packages/vaaniq-tools",
-    "packages/vaaniq-channels",
-    "packages/vaaniq-server",
+    "packages/naaviq-core",
+    "packages/naaviq-graph",
+    "packages/naaviq-voice",
+    "packages/naaviq-rag",
+    "packages/naaviq-tools",
+    "packages/naaviq-channels",
+    "packages/naaviq-server",
 ]
 ```
 
 Each package has its own `pyproject.toml`:
 
 ```toml
-# packages/vaaniq-graph/pyproject.toml
+# packages/naaviq-graph/pyproject.toml
 [project]
-name = "vaaniq-graph"
+name = "naaviq-graph"
 version = "0.1.0"
-description = "Visual LangGraph execution engine for Vaaniq"
+description = "Visual LangGraph execution engine for Naaviq"
 requires-python = ">=3.12"
 dependencies = [
-    "vaaniq-core>=0.1.0",
+    "naaviq-core>=0.1.0",
     "langgraph>=0.2.0",
     "langchain>=0.3.0",
     "langchain-openai>=0.2.0",
@@ -342,45 +342,45 @@ dev = ["pytest>=8.0", "pytest-asyncio>=0.24"]
 uv sync
 
 # Run backend server
-uv run uvicorn vaaniq.server.main:app --reload
+uv run uvicorn naaviq.server.main:app --reload
 
 # Run Celery worker
-uv run celery -A vaaniq.server.workers.celery_app worker --loglevel=info
+uv run celery -A naaviq.server.workers.celery_app worker --loglevel=info
 
 # Run all tests
 uv run pytest
 
 # Test a single package in isolation (no server, no DB needed)
-uv run pytest packages/vaaniq-graph/tests/ -v
-uv run pytest packages/vaaniq-rag/tests/ -v
+uv run pytest packages/naaviq-graph/tests/ -v
+uv run pytest packages/naaviq-rag/tests/ -v
 
 # Test a specific file
-uv run pytest packages/vaaniq-graph/tests/nodes/test_condition.py -v
+uv run pytest packages/naaviq-graph/tests/nodes/test_condition.py -v
 
 # Check for unapplied migrations (run in CI before deploy)
-uv run alembic -c packages/vaaniq-server/alembic.ini check
+uv run alembic -c packages/naaviq-server/alembic.ini check
 
 # Run DB migrations
-uv run alembic -c packages/vaaniq-server/alembic.ini upgrade head
+uv run alembic -c packages/naaviq-server/alembic.ini upgrade head
 
 # Publish a package to PyPI
-uv publish packages/vaaniq-rag/
+uv publish packages/naaviq-rag/
 ```
 
 ### Package Versioning
 
 ```
-vaaniq-core      v0.1.0   changes rarely — it's the contract
-vaaniq-graph     v0.1.0   new node type = minor bump
-vaaniq-rag       v0.1.0   new data source connector = minor bump
-vaaniq-tools     v0.1.0   new tool = minor bump
-vaaniq-voice     v0.1.0
-vaaniq-channels  v0.1.0
-vaaniq-server    v0.1.0   ties all packages together
+naaviq-core      v0.1.0   changes rarely — it's the contract
+naaviq-graph     v0.1.0   new node type = minor bump
+naaviq-rag       v0.1.0   new data source connector = minor bump
+naaviq-tools     v0.1.0   new tool = minor bump
+naaviq-voice     v0.1.0
+naaviq-channels  v0.1.0
+naaviq-server    v0.1.0   ties all packages together
 ```
 
-Breaking change in `vaaniq-core` → major version bump for all packages.
-New Google Sheets connector in `vaaniq-rag` → only `vaaniq-rag` bumps to v0.2.0.
+Breaking change in `naaviq-core` → major version bump for all packages.
+New Google Sheets connector in `naaviq-rag` → only `naaviq-rag` bumps to v0.2.0.
 
 ---
 
@@ -389,13 +389,13 @@ New Google Sheets connector in `vaaniq-rag` → only `vaaniq-rag` bumps to v0.2.
 ### Python (per package)
 | Package | Key Dependencies |
 |---|---|
-| vaaniq-core | pydantic only |
-| vaaniq-graph | vaaniq-core, langgraph, langchain |
-| vaaniq-voice | vaaniq-core, vaaniq-graph, pipecat-ai (PSTN), livekit-agents (WebRTC — Sprint 5) |
-| vaaniq-rag | vaaniq-core, langchain, pgvector, pypdf, python-docx, httpx |
-| vaaniq-tools | vaaniq-core, httpx (base) + optional groups: crm, payments, calendar, helpdesk, ecommerce, messaging |
-| vaaniq-channels | vaaniq-core, vaaniq-graph, httpx |
-| vaaniq-server | all packages + fastapi, uvicorn, sqlalchemy, alembic, asyncpg, celery, redis, python-jose, bcrypt, cryptography, pydantic-settings, slowapi, sentry-sdk, opentelemetry-sdk, prometheus-fastapi-instrumentator |
+| naaviq-core | pydantic only |
+| naaviq-graph | naaviq-core, langgraph, langchain |
+| naaviq-voice | naaviq-core, naaviq-graph, pipecat-ai (PSTN), livekit-agents (WebRTC — Sprint 5) |
+| naaviq-rag | naaviq-core, langchain, pgvector, pypdf, python-docx, httpx |
+| naaviq-tools | naaviq-core, httpx (base) + optional groups: crm, payments, calendar, helpdesk, ecommerce, messaging |
+| naaviq-channels | naaviq-core, naaviq-graph, httpx |
+| naaviq-server | all packages + fastapi, uvicorn, sqlalchemy, alembic, asyncpg, celery, redis, python-jose, bcrypt, cryptography, pydantic-settings, slowapi, sentry-sdk, opentelemetry-sdk, prometheus-fastapi-instrumentator |
 
 ### Infrastructure
 | Tool | Purpose |
@@ -418,7 +418,7 @@ Every agent's behaviour is a **visual graph** that maps 1:1 to a LangGraph in Py
 Visual Graph (React Flow UI)
          ↕  serialise / deserialise
 JSON config (stored in PostgreSQL JSONB)
-         ↕  GraphBuilder (vaaniq-graph)
+         ↕  GraphBuilder (naaviq-graph)
 LangGraph  (Python, executes at session time)
 ```
 
@@ -434,12 +434,12 @@ Chat:            Text  → LangGraph → text → SSE stream → UI
 WhatsApp:  Text  → webhook      → text → LangGraph → text → WhatsApp API → user
 ```
 
-### SessionState — Shared State (vaaniq-core)
+### SessionState — Shared State (naaviq-core)
 
 Every node reads from and writes to `SessionState`. **Never mutate — always return a new dict.**
 
 ```python
-# packages/vaaniq-core/vaaniq/core/state.py
+# packages/naaviq-core/naaviq/core/state.py
 from typing import TypedDict, Optional, List, Any, Literal
 
 class Message(TypedDict):
@@ -481,10 +481,10 @@ class SessionState(TypedDict):
     error: Optional[str]
 ```
 
-### GraphBuilder (vaaniq-graph)
+### GraphBuilder (naaviq-graph)
 
 ```python
-# packages/vaaniq-graph/vaaniq/graph/builder.py
+# packages/naaviq-graph/naaviq/graph/builder.py
 class GraphBuilder:
     def build(self, graph_config: dict, org_keys: dict) -> CompiledGraph:
         workflow = StateGraph(SessionState)
@@ -507,12 +507,12 @@ class GraphBuilder:
         return workflow.compile()
 ```
 
-### Node Pattern (vaaniq-graph)
+### Node Pattern (naaviq-graph)
 
 All nodes are **classes** — config and org_keys injected at build time:
 
 ```python
-# packages/vaaniq-graph/vaaniq/graph/nodes/base.py
+# packages/naaviq-graph/naaviq/graph/nodes/base.py
 class BaseNode:
     def __init__(self, config: dict, org_keys: dict):
         self.config = config
@@ -611,7 +611,7 @@ All credentials encrypted with **Fernet** before storing. Encryption key in `FER
 
 ## Database Schema (Key Tables)
 
-All in `vaaniq-server`. Migrations managed by Alembic.
+All in `naaviq-server`. Migrations managed by Alembic.
 
 **All mutable tables have `deleted_at TIMESTAMPTZ` for soft deletes. Never hard-delete user data.**
 
@@ -732,16 +732,16 @@ log.info("node_executed", org_id=..., session_id=..., node_id=..., duration_ms=.
 Four GitHub Actions workflows in `.github/workflows/`:
 
 **`ci.yml`** — runs on every PR:
-- Matrix: test each package in isolation (`vaaniq-core`, `vaaniq-graph`, etc.)
+- Matrix: test each package in isolation (`naaviq-core`, `naaviq-graph`, etc.)
 - Lint: `ruff check` + `mypy`
 - `alembic check` — fails if unapplied migrations exist
 
-**`publish.yml`** — runs on tag `vaaniq-graph/v*`:
+**`publish.yml`** — runs on tag `naaviq-graph/v*`:
 - Build + publish the tagged package to PyPI via `uv publish`
 - One workflow, triggered per-package by tag prefix
 
 **`docker.yml`** — runs on merge to `main`:
-- Build `vaaniq-server` Docker image
+- Build `naaviq-server` Docker image
 - Push to GitHub Container Registry (ghcr.io)
 
 **`migrate.yml`** — runs on deploy to Railway/production:
@@ -754,7 +754,7 @@ Four GitHub Actions workflows in `.github/workflows/`:
 
 ```bash
 # Database
-DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/vaaniq
+DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/naaviq
 DATABASE_REPLICA_URL=                        # optional — read replica for analytics
 
 # Redis
@@ -766,14 +766,14 @@ FERNET_KEY=your-fernet-key-here
 # Generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 
 # CORS — comma-separated list of allowed origins
-ALLOWED_ORIGINS=http://localhost:3000,https://app.vaaniq.ai
+ALLOWED_ORIGINS=http://localhost:3000,https://app.naaviq.ai
 
 # File storage
 STORAGE_BACKEND=minio                        # minio | s3
 MINIO_ENDPOINT=localhost:9000
 MINIO_ACCESS_KEY=minioadmin
 MINIO_SECRET_KEY=minioadmin
-MINIO_BUCKET=vaaniq
+MINIO_BUCKET=naaviq
 AWS_S3_BUCKET=                               # used when STORAGE_BACKEND=s3
 AWS_REGION=
 
@@ -796,8 +796,8 @@ DEFAULT_ELEVENLABS_KEY=
 
 ```bash
 # 1. Clone backend
-git clone https://github.com/chandradot99/vaaniq
-cd vaaniq
+git clone https://github.com/chandradot99/naaviq
+cd naaviq
 
 # 2. Install uv
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -806,15 +806,15 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync
 
 # 4. Setup env
-cp .env.example packages/vaaniq-server/.env
+cp .env.example packages/naaviq-server/.env
 # edit .env
 
 # 5. Run DB migrations
-uv run alembic -c packages/vaaniq-server/alembic.ini upgrade head
+uv run alembic -c packages/naaviq-server/alembic.ini upgrade head
 
 # 6a. Start backend manually
-uv run uvicorn vaaniq.server.main:app --reload        # terminal 1
-uv run celery -A vaaniq.server.workers.celery_app worker  # terminal 2
+uv run uvicorn naaviq.server.main:app --reload        # terminal 1
+uv run celery -A naaviq.server.workers.celery_app worker  # terminal 2
 
 # 6b. OR — full backend stack with Docker
 docker compose up
@@ -826,7 +826,7 @@ docker compose up
 
 Sprints, tickets, and priorities are managed in Linear — not in this file.
 
-- **Linear:** https://linear.app/chandradot99/project/vaaniq-43b1169cf4e7
+- **Linear:** https://linear.app/chandradot99/project/naaviq-43b1169cf4e7
 
 ---
 
@@ -835,7 +835,7 @@ Sprints, tickets, and priorities are managed in Linear — not in this file.
 1. **Multiple composable packages** — not one monolith; enables independent versioning, testing, and community adoption
 2. **Domain-based server structure** — each feature area (`auth/`, `agents/`, `webhooks/`) owns its own `router.py`, `service.py`, `repository.py`, `models.py`, `schemas.py`, `dependencies.py`, `exceptions.py`. Only truly shared models go in `models/`. No flat `routers/v1/` folder.
 3. **uv workspaces** — modern Python monorepo management; faster than pip/poetry
-4. **vaaniq-core has zero vaaniq dependencies** — it's the contract; if it imports from graph or server, you've made a mistake
+4. **naaviq-core has zero naaviq dependencies** — it's the contract; if it imports from graph or server, you've made a mistake
 5. **All API routes under /v1/** — versioned from day one; webhooks (Twilio/WA) are the only exception
 6. **FastAPI over Flask/Django** — async is mandatory for concurrent voice + chat sessions
 7. **LangGraph over basic LangChain agents** — stateful graph for multi-step flows
@@ -869,7 +869,7 @@ Always keep the Indian market in mind — it's a key differentiator:
 
 - **Don't add routes without /v1/ prefix** — exception: `/webhooks/*`, `/health`, `/ready`, `/metrics`
 - **Don't put everything in one package** — each package has one clear responsibility
-- **Don't let vaaniq-graph import from vaaniq-server** — only upward dependencies allowed
+- **Don't let naaviq-graph import from naaviq-server** — only upward dependencies allowed
 - **Don't use Flask** — FastAPI only; async is required throughout
 - **Don't use basic LangChain AgentExecutor** — use LangGraph for all agent logic
 - **Don't build custom audio pipeline** — Pipecat handles PSTN, LiveKit handles WebRTC; never roll your own VAD/interruption handling
@@ -888,7 +888,7 @@ Always keep the Indian market in mind — it's a key differentiator:
 
 ## After Every Change
 
-- **Run `uv run pytest packages/vaaniq-server/tests/ -v` and fix any failures before considering the task done**
+- **Run `uv run pytest packages/naaviq-server/tests/ -v` and fix any failures before considering the task done**
 - **Check for Python warnings** — run with `-W error` in CI; deprecation warnings from Pydantic/SQLAlchemy must be fixed, not suppressed
 
 ---
@@ -910,34 +910,34 @@ Always keep the Indian market in mind — it's a key differentiator:
 
 **1. Which package does it belong to?**
 ```
-New node type          → packages/vaaniq-graph/vaaniq/graph/nodes/
-New RAG data source    → packages/vaaniq-rag/vaaniq/rag/sources/
-New vector DB          → packages/vaaniq-rag/vaaniq/rag/vector_db/
-New pre-built tool     → packages/vaaniq-tools/vaaniq/tools/
-New API endpoint       → packages/vaaniq-server/vaaniq/server/<domain>/router.py
-New channel            → packages/vaaniq-channels/vaaniq/channels/
-New STT/TTS provider   → packages/vaaniq-voice/vaaniq/voice/providers/
-PSTN voice change      → packages/vaaniq-voice/vaaniq/voice/pipecat.py
-WebRTC voice change    → packages/vaaniq-voice/vaaniq/voice/livekit.py
+New node type          → packages/naaviq-graph/naaviq/graph/nodes/
+New RAG data source    → packages/naaviq-rag/naaviq/rag/sources/
+New vector DB          → packages/naaviq-rag/naaviq/rag/vector_db/
+New pre-built tool     → packages/naaviq-tools/naaviq/tools/
+New API endpoint       → packages/naaviq-server/naaviq/server/<domain>/router.py
+New channel            → packages/naaviq-channels/naaviq/channels/
+New STT/TTS provider   → packages/naaviq-voice/naaviq/voice/providers/
+PSTN voice change      → packages/naaviq-voice/naaviq/voice/pipecat.py
+WebRTC voice change    → packages/naaviq-voice/naaviq/voice/livekit.py
 ```
 
-**2.** Does `SessionState` need a new field? → edit `vaaniq-core/state.py`
+**2.** Does `SessionState` need a new field? → edit `naaviq-core/state.py`
 
 **3.** Write and test the package logic in isolation first
 
-**4.** Wire into `vaaniq-server` last
+**4.** Wire into `naaviq-server` last
 
-**5.** DB schema change? → create Alembic migration in `vaaniq-server`; add soft delete + indexes
+**5.** DB schema change? → create Alembic migration in `naaviq-server`; add soft delete + indexes
 
-**6.** New node? → register in `NODE_REGISTRY` in `vaaniq/graph/nodes/__init__.py`
+**6.** New node? → register in `NODE_REGISTRY` in `naaviq/graph/nodes/__init__.py`
 
-**7.** New tool? → register in `TOOL_REGISTRY` in `vaaniq/tools/registry.py`
+**7.** New tool? → register in `TOOL_REGISTRY` in `naaviq/tools/registry.py`
 
 **8.** New API endpoint? → create a domain folder (`<domain>/router.py`, `service.py`, `repository.py`, `models.py`, `schemas.py`, `dependencies.py`, `exceptions.py`); inherit schemas from `CustomModel`; add rate limit if public-facing
 
 ---
 
-*Vaaniq — Last updated: April 1, 2026*
+*Naaviq — Last updated: April 1, 2026*
 
 ## Keeping This File Current
 

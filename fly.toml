@@ -1,10 +1,10 @@
-# Fly.io configuration for vaaniq-voice-server
+# Fly.io configuration for naaviq-voice-server
 # https://fly.io/docs/reference/configuration/
 #
 # Deploy: fly deploy --config fly.toml
 #
 # The voice server runs close to Twilio's media edge (iad region) to minimise
-# audio latency. vaaniq-server (API) runs separately on Railway.
+# audio latency. naaviq-server (API) runs separately on Railway.
 #
 # Required secrets (set via fly secrets set KEY=value):
 #   DATABASE_URL        postgresql+asyncpg://...  ← same DB as Railway API server
@@ -16,11 +16,11 @@
 #   VOICE_SERVER_URL    https://<fly-app-name>.fly.dev
 #   SENTRY_DSN          (optional)
 
-app = "vaaniq-voice"
+app = "naaviq-voice"
 primary_region = "iad"  # Twilio's primary US media edge — minimises audio RTT
 
 [build]
-  dockerfile = "packages/vaaniq-voice-server/Dockerfile"
+  dockerfile = "packages/naaviq-voice-server/Dockerfile"
 
 [http_service]
   internal_port = 8080

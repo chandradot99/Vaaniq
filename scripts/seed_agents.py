@@ -21,9 +21,9 @@ import argparse
 import asyncio
 import uuid
 
-from vaaniq.server.core.database import async_session_factory
-import vaaniq.server.auth.models  # noqa: F401  — ensures FK tables are loaded
-from vaaniq.server.agents.models import Agent
+from naaviq.server.core.database import async_session_factory
+import naaviq.server.auth.models  # noqa: F401  — ensures FK tables are loaded
+from naaviq.server.agents.models import Agent
 
 # ---------------------------------------------------------------------------
 # Agent definition

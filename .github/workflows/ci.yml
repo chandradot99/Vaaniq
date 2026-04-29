@@ -11,12 +11,12 @@ jobs:
     strategy:
       matrix:
         package:
-          - vaaniq-core
-          - vaaniq-graph
-          - vaaniq-voice
-          - vaaniq-rag
-          - vaaniq-tools
-          - vaaniq-channels
+          - naaviq-core
+          - naaviq-graph
+          - naaviq-voice
+          - naaviq-rag
+          - naaviq-tools
+          - naaviq-channels
 
     steps:
       - uses: actions/checkout@v4
@@ -75,14 +75,14 @@ jobs:
         run: uv sync
 
       - name: Lint
-        run: uvx ruff check packages/vaaniq-server/
+        run: uvx ruff check packages/naaviq-server/
 
       - name: Check migrations
         env:
           DATABASE_URL: ${{ vars.CI_DATABASE_URL }}
           SECRET_KEY: ${{ secrets.CI_SECRET_KEY }}
           FERNET_KEY: ${{ secrets.CI_FERNET_KEY }}
-        run: uv run alembic -c packages/vaaniq-server/alembic.ini upgrade head
+        run: uv run alembic -c packages/naaviq-server/alembic.ini upgrade head
 
       - name: Test
         env:
@@ -90,4 +90,4 @@ jobs:
           TEST_REDIS_URL: ${{ vars.CI_REDIS_URL }}
           TEST_SECRET_KEY: ${{ secrets.CI_SECRET_KEY }}
           TEST_FERNET_KEY: ${{ secrets.CI_FERNET_KEY }}
-        run: uv run pytest packages/vaaniq-server/tests/ -v
+        run: uv run pytest packages/naaviq-server/tests/ -v

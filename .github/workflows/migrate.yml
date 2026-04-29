@@ -26,4 +26,4 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
           FERNET_KEY: ${{ secrets.FERNET_KEY }}
-        run: uv run alembic -c packages/vaaniq-server/alembic.ini upgrade head
+        run: uv run alembic -c packages/naaviq-server/alembic.ini upgrade head

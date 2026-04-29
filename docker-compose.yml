@@ -3,8 +3,8 @@
 # Run full stack:   docker compose up
 #
 # For local dev, run the server directly:
-#   uv run uvicorn vaaniq.server.main:app --reload
-#   uv run celery -A vaaniq.server.workers.celery_app worker  (Sprint 3+)
+#   uv run uvicorn naaviq.server.main:app --reload
+#   uv run celery -A naaviq.server.workers.celery_app worker  (Sprint 3+)
 
 services:
 
@@ -13,15 +13,15 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_USER: vaaniq
-      POSTGRES_PASSWORD: vaaniq
-      POSTGRES_DB: vaaniq
+      POSTGRES_USER: naaviq
+      POSTGRES_PASSWORD: naaviq
+      POSTGRES_DB: naaviq
     ports:
       - "5432:5432"     # exposed to localhost for local dev
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U vaaniq"]
+      test: ["CMD-SHELL", "pg_isready -U naaviq"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -53,13 +53,13 @@ services:
   api:
     build:
       context: .
-      dockerfile: packages/vaaniq-server/Dockerfile
+      dockerfile: packages/naaviq-server/Dockerfile
     ports:
       - "8000:8000"
     env_file: .env
     environment:
       # Override localhost URLs with Docker service names
-      DATABASE_URL: postgresql+asyncpg://vaaniq:vaaniq@postgres:5432/vaaniq
+      DATABASE_URL: postgresql+asyncpg://naaviq:naaviq@postgres:5432/naaviq
       REDIS_URL: redis://redis:6379/0
     depends_on:
       postgres:
@@ -68,8 +68,8 @@ services:
         condition: service_healthy
     command: >
       sh -c "
-        uv run alembic -c packages/vaaniq-server/alembic.ini upgrade head &&
-        uv run uvicorn vaaniq.server.main:app --host 0.0.0.0 --port 8000
+        uv run alembic -c packages/naaviq-server/alembic.ini upgrade head &&
+        uv run uvicorn naaviq.server.main:app --host 0.0.0.0 --port 8000
       "
 
   # ── Worker (Sprint 3+ only — needed for document embedding & campaigns) ─────
@@ -77,17 +77,17 @@ services:
   worker:
     build:
       context: .
-      dockerfile: packages/vaaniq-server/Dockerfile
+      dockerfile: packages/naaviq-server/Dockerfile
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://vaaniq:vaaniq@postgres:5432/vaaniq
+      DATABASE_URL: postgresql+asyncpg://naaviq:naaviq@postgres:5432/naaviq
       REDIS_URL: redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: uv run celery -A vaaniq.server.workers.celery_app worker --loglevel=info
+    command: uv run celery -A naaviq.server.workers.celery_app worker --loglevel=info
     profiles:
       - worker   # only starts when explicitly requested: docker compose --profile worker up
 

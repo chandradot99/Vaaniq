@@ -1,4 +1,4 @@
-# Vaaniq — Architecture Decisions & Roadmap
+# Naaviq — Architecture Decisions & Roadmap
 
 Permanent record of key architectural decisions and what is deliberately deferred to v1.5 / v2.
 Update this file when decisions change — do not open new debates on closed items.

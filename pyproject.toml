@@ -1,24 +1,24 @@
 [tool.uv.workspace]
 members = [
-    "packages/vaaniq-core",
-    "packages/vaaniq-graph",
-    "packages/vaaniq-voice",
-    "packages/vaaniq-rag",
-    "packages/vaaniq-tools",
-    "packages/vaaniq-channels",
-    "packages/vaaniq-server",
-    "packages/vaaniq-voice-server",
+    "packages/naaviq-core",
+    "packages/naaviq-graph",
+    "packages/naaviq-voice",
+    "packages/naaviq-rag",
+    "packages/naaviq-tools",
+    "packages/naaviq-channels",
+    "packages/naaviq-server",
+    "packages/naaviq-voice-server",
 ]
 
 [tool.uv.sources]
-vaaniq-core         = { workspace = true }
-vaaniq-graph        = { workspace = true }
-vaaniq-voice        = { workspace = true }
-vaaniq-rag          = { workspace = true }
-vaaniq-tools        = { workspace = true }
-vaaniq-channels     = { workspace = true }
-vaaniq-server       = { workspace = true }
-vaaniq-voice-server = { workspace = true }
+naaviq-core         = { workspace = true }
+naaviq-graph        = { workspace = true }
+naaviq-voice        = { workspace = true }
+naaviq-rag          = { workspace = true }
+naaviq-tools        = { workspace = true }
+naaviq-channels     = { workspace = true }
+naaviq-server       = { workspace = true }
+naaviq-voice-server = { workspace = true }
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
@@ -35,15 +35,15 @@ select = ["E", "F", "I"]
 
 [tool.ruff.lint.per-file-ignores]
 # LLM prompt strings contain intentionally long lines
-"packages/vaaniq-graph/vaaniq/graph/nodes/collect_data.py" = ["E501"]
+"packages/naaviq-graph/naaviq/graph/nodes/collect_data.py" = ["E501"]
 # Admin constants: long default config values
-"packages/vaaniq-server/vaaniq/server/admin/constants.py" = ["E501"]
+"packages/naaviq-server/naaviq/server/admin/constants.py" = ["E501"]
 # Tracing: long span/attribute names are part of the OTel schema
-"packages/vaaniq-server/vaaniq/server/chat/tracing.py" = ["E501"]
+"packages/naaviq-server/naaviq/server/chat/tracing.py" = ["E501"]
 # Chat service: long log messages and structured data
-"packages/vaaniq-server/vaaniq/server/chat/service.py" = ["E501"]
+"packages/naaviq-server/naaviq/server/chat/service.py" = ["E501"]
 # Tool implementations: long URLs and API strings
-"packages/vaaniq-tools/vaaniq/tools/google/calendar.py" = ["E501"]
+"packages/naaviq-tools/naaviq/tools/google/calendar.py" = ["E501"]
 # Test files: long assertion messages and test data are acceptable
 "packages/*/tests/**/*.py" = ["E501"]
 "packages/*/tests/*.py" = ["E501"]
